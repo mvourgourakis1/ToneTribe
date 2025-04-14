@@ -2,7 +2,7 @@
 
 **ToneTribe** is a music streaming app designed to connect people through shared musical tastes, fostering vibrant communities called Tribes. By blending music discovery with social interaction, ToneTribe empowers users to explore genres, make friends, and curate playlists together in a dynamic, engaging way.
 
-## 1. Problem Definition and User Research (25 Points)
+## 1. Problem Definition and User Research
 
 ### Problem
 Music streaming apps often prioritize individual listening or algorithm-driven recommendations, leaving users craving deeper social connections over shared musical passions. Existing platforms lack spaces where fans can bond over specific vibes, collaborate on playlists, or feel part of a community that evolves with their tastes.
@@ -21,7 +21,7 @@ ToneTribe solves this by centering the experience around Tribes—communities wh
 - **Goals**: Find new music that fits her vibe, connect with fans who share her tastes, and co-create playlists.
 - **Pain Points**: Feels isolated on algorithm-heavy apps; wants a community to discuss and share music.
 
-## 2. Conceptualization and Design (30 Points)
+## 2. Conceptualization and Design
 
 ### Main Features
 - **Official Tribes**: 10 genre-based Tribes (e.g., Pop, Jazz, EDM) at launch, moderated by ToneTribe admins, open to unlimited members.
@@ -46,7 +46,7 @@ ToneTribe solves this by centering the experience around Tribes—communities wh
 5. **Curation**: If elected leader, collaborates to update the TribeList (add/remove tracks).
 6. **Archiving**: Saves a TribeList version to revisit later.
 
-## 3. Behaviors (15 Points)
+## 3. Behaviors
 
 ### Key Behaviors
 - **Community Building**: Users join Tribes to connect with like-minded fans, fostering friendships and discussions around music.
@@ -59,7 +59,7 @@ ToneTribe solves this by centering the experience around Tribes—communities wh
 - **Democratic Control**: Voting for leaders gives users agency, making Tribes feel personal and dynamic.
 - **Vibe-Driven Design**: Custom Tribes let users express identity, driving emotional investment.
 
-## 4. Deployment and Maintenance (10 Points)
+## 4. Deployment and Maintenance 
 
 ### Deployment
 - **Platform**: ToneTribe will launch as a mobile app on iOS and Android, with a web version for broader access.
@@ -71,7 +71,7 @@ ToneTribe solves this by centering the experience around Tribes—communities wh
 - **Moderation**: Admins oversee official Tribes; user Tribes have report systems for content violations.
 - **Scalability**: Monitor server load as Tribes grow, optimizing for large communities (10,000+ members).
 
-## 5. Documentation and Presentation (20 Points)
+## 5. Documentation and Presentation
 
 ### GitHub Repository
 - This README outlines the full product design.
@@ -80,9 +80,7 @@ ToneTribe solves this by centering the experience around Tribes—communities wh
 - Code snippets or prototypes can be added for future development.
 
 ### Pitch Slides
-- **Slide 1**: Introduces ToneTribe’s mission: “Connect through music, vibe by vibe.” Highlights Tribes and social discovery.
-- **Slide 2**: Shows key features (TribeList, VibeMatch, voting) and user flow, with a mockup of a Tribe hub.
-- *(Note: Slides will be created separately and linked here.)*
+- **Slide Link**: Introduces ToneTribe’s mission: “Connect through music, vibe by vibe.” Highlights Tribes and social discovery.
 
 ## Next Steps
 ToneTribe aims to redefine music streaming by prioritizing community and creativity. Future iterations could include live events, artist partnerships, or gamified rewards for active Tribes.
