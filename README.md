@@ -84,3 +84,13 @@ ToneTribe solves this by centering the experience around Tribes—communities wh
 
 ## Next Steps
 ToneTribe aims to redefine music streaming by prioritizing community and creativity. Future iterations could include live events, artist partnerships, or gamified rewards for active Tribes.
+
+##Community Engagement
+###REQUESTING: A non-leader can create requests/suggestions for song additions in any tribe's playlist.
+	DAILY CAP: There should be a daily cap on how many requests someone can make in 1 tribe's playlist (~5/day? --> to avoid clutter/spams for the leader)
+	APPROVAL: You get participation/activity points for every song that's approved
+	REJECTION: No penalties for having your request rejected.
+	FEEDBACK: When the leader either approves or rejects a request, they can send feedback to the requester for (a very small amount of) activity points.
+		- Kind of like Scoir (if you add a college, it asks you why you added it and gives you a bunch of options you can select from + you can select multiple)
+		- MAYBE: small 
+SCOIR'S LAYOUT (this would be what the leader's POV looks like when writing feedback)
