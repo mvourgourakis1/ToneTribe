@@ -14,10 +14,13 @@
 #Short Form Content
 - Have an instragram/tiktok style short form content except its the music and you can swipe through to discover new music
 
-#vote on music you want to see in specific places
+# vote on music you want to see in specific places
 - for example vote on the music you hear in the gym
   - music in the gym is terrible and this could improve experience
     - goes beyond gyms and can be any public location
+
+
+#make playlists that you can import into your streaming service (spotify & Apple Music)
 
 
 
