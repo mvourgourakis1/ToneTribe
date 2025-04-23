@@ -84,3 +84,6 @@ ToneTribe solves this by centering the experience around Tribes—communities wh
 
 ## Next Steps
 ToneTribe aims to redefine music streaming by prioritizing community and creativity. Future iterations could include live events, artist partnerships, or gamified rewards for active Tribes.
+
+## Profile Customization
+Individual users can list top three favorite songs, change their profile picture, and choose which genres they like. Profiles can also show which tribes users are most active in.
