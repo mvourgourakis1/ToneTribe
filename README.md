@@ -32,6 +32,11 @@ ToneTribe solves this by centering the experience around Tribes—communities wh
 - **Archiving**: Users can save favorite TribeList versions for personal use.
 - **Social Features**: Friend connections, taste comparisons, and in-app messaging within Tribes.
 
+### Leadership Voting (elaborated)
+At the end of each month, every Tribe initiates a three-day voting window where members elect new playlist leaders. Candidates can self-nominate or be nominated by peers, with each candidate providing a brief “Vibe Statement” describing their music taste, curation goals, and favorite recent tracks. Inside the Tribe Hub, users will see a voting interface with candidate profiles, recent contributions (like songs added, messages sent, and listening activity), and endorsement badges from fellow Tribe members. Each user gets one vote, and voting is anonymous. Participation is encouraged through push notifications and leaderboard incentives, reinforcing a culture of shared ownership and democratic influence.
+
+To reward meaningful engagement while ensuring fairness, votes are lightly weighted based on a user’s recent activity within the Tribe—measured by listening time, playlist interactions, and community participation. However, even low-activity users maintain full voting power to prevent gatekeeping. The top two or three candidates (depending on Tribe size) are granted collaborative editing rights for the TribeList over the next month, with the ability to add, remove, and reorder songs. To encourage rotation and inclusivity, leaders may serve a maximum of two consecutive terms before stepping down for at least one cycle. If no candidates volunteer, the system defaults to a rotation based on recent leaderboard activity, ensuring continuity while preserving community-driven governance.
+
 ### Sketches/Details
 - **Homepage**: Displays user’s Tribes, recommended Tribes via VibeMatch, and friend activity.
 - **Tribe Hub**: Shows TribeList, leaderboard, chat, and voting interface.
