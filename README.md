@@ -99,3 +99,5 @@ ToneTribe aims to redefine music streaming by prioritizing community and creativ
 		- Kind of like Scoir (if you add a college, it asks you why you added it and gives you a bunch of options you can select from + you can select multiple)
 		- MAYBE: small 
 SCOIR'S LAYOUT (this would be what the leader's POV looks like when writing feedback)
+## Profile Customization
+Individual users can list top three favorite songs, change their profile picture, and choose which genres they like. Profiles can also show which tribes users are most active in.
