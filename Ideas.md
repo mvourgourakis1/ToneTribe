@@ -22,6 +22,12 @@
 
 #make playlists that you can import into your streaming service (spotify & Apple Music)
 
+# jam session
+  - Similiar to spoitfy jam and apple share play, this could bridge the gap between a persons with spotify and apple music to allow them to play music togehter, each playing from their selective platform
+
+#Stats
+    - track listening activity and stats for the persons respective platform and display it
+
 
 
 
