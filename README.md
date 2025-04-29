@@ -103,3 +103,23 @@ ToneTribe aims to redefine music streaming by prioritizing community and creativ
 SCOIR'S LAYOUT (this would be what the leader's POV looks like when writing feedback)
 ## Profile Customization
 Individual users can list top three favorite songs, change their profile picture, and choose which genres they like. Profiles can also show which tribes users are most active in.
+
+
+
+Connor - Application systems
+What considers activity:
+Listening mins logged
+Hosting listening parties
+Adding to playlists
+    - maybe to limit people from spam adding songs make like a vote? to limit how often someone can add a song
+Commenting during songs (like soundcloud) / engagement to music
+
+Leader Board:
+make sure the tribe leader can only be picked once? unless like 2/3 majority reelects?
+like an option to revote for the tribe leader?
+make sub ranks as well?
+    - managing the songs
+    - creating votes
+
+
+
