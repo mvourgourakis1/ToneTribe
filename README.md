@@ -39,6 +39,7 @@ ToneTribe solves this by centering the experience around Tribes—communities wh
 - *(Note: Wireframes can be added to the repo’s `/sketches` folder if required.)*
 
 ### User Flow
+0. **Connection**: User connects ToneTribe to streaming service of choice to be tracked on user profile.
 1. **Onboarding**: User signs up, selects favorite genres, and joins 1–2 official Tribes.
 2. **Exploration**: Browses official Tribes, connects with users, and discovers music via TribeLists.
 3. **Tribe Creation**: After befriending 5+ users, creates a Tribe with a custom vibe and invites others.
