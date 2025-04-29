@@ -1,0 +1,19 @@
+Key features
+- menu 
+- user profiles
+    - store informations
+    - list of tribes you are a part of
+    - personalized stats on music taste
+    - have list on friends (bidirectional, not single)
+- Tribe search page
+    - able to search for differnt music tags
+    - able to see tribes your friends are on
+- Tribe system
+    - has chat, channel, listening functions of discord
+    - tracks activity
+        - listening hours
+        - contributions to playlist
+    - stores list of songs for a playlist
+        - can view past playlists
+    - has an interface for adding songs to a playlist (for tribe leaders)
+    - has a voting system interface to elect 2 tribe leaders
