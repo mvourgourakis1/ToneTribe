@@ -85,3 +85,22 @@ ToneTribe solves this by centering the experience around Tribes—communities wh
 
 ## Next Steps
 ToneTribe aims to redefine music streaming by prioritizing community and creativity. Future iterations could include live events, artist partnerships, or gamified rewards for active Tribes.
+
+
+Connor - Application systems
+What considers activity:
+Listening mins logged
+Hosting listening parties
+Adding to playlists
+    - maybe to limit people from spam adding songs make like a vote? to limit how often someone can add a song
+Commenting during songs (like soundcloud) / engagement to music
+
+Leader Board:
+make sure the tribe leader can only be picked once? unless like 2/3 majority reelects?
+like an option to revote for the tribe leader?
+make sub ranks as well?
+    - managing the songs
+    - creating votes
+
+
+
