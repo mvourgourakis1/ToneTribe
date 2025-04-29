@@ -92,7 +92,19 @@ To reward meaningful engagement while ensuring fairness, votes are lightly weigh
 ## Next Steps
 ToneTribe aims to redefine music streaming by prioritizing community and creativity. Future iterations could include live events, artist partnerships, or gamified rewards for active Tribes.
 
-<<<<<<< HEAD
+### REQUESTING: A non-leader can create requests/suggestions for song additions in any tribe's playlist.
+## Community Engagement
+	DAILY CAP: There should be a daily cap on how many requests someone can make in 1 tribe's playlist (~5/day? --> to avoid clutter/spams for the leader)
+	APPROVAL: You get participation/activity points for every song that's approved
+	REJECTION: No penalties for having your request rejected.
+	FEEDBACK: When the leader either approves or rejects a request, they can send feedback to the requester for (a very small amount of) activity points.
+		- Kind of like Scoir (if you add a college, it asks you why you added it and gives you a bunch of options you can select from + you can select multiple)
+		- MAYBE: small 
+SCOIR'S LAYOUT (this would be what the leader's POV looks like when writing feedback)
+## Profile Customization
+Individual users can list top three favorite songs, change their profile picture, and choose which genres they like. Profiles can also show which tribes users are most active in.
+
+
 
 Connor - Application systems
 What considers activity:
@@ -111,16 +123,3 @@ make sub ranks as well?
 
 
 
-=======
-## Community Engagement
-### REQUESTING: A non-leader can create requests/suggestions for song additions in any tribe's playlist.
-	DAILY CAP: There should be a daily cap on how many requests someone can make in 1 tribe's playlist (~5/day? --> to avoid clutter/spams for the leader)
-	APPROVAL: You get participation/activity points for every song that's approved
-	REJECTION: No penalties for having your request rejected.
-	FEEDBACK: When the leader either approves or rejects a request, they can send feedback to the requester for (a very small amount of) activity points.
-		- Kind of like Scoir (if you add a college, it asks you why you added it and gives you a bunch of options you can select from + you can select multiple)
-		- MAYBE: small 
-SCOIR'S LAYOUT (this would be what the leader's POV looks like when writing feedback)
-## Profile Customization
-Individual users can list top three favorite songs, change their profile picture, and choose which genres they like. Profiles can also show which tribes users are most active in.
->>>>>>> origin/main
