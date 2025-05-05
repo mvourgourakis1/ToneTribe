@@ -50,6 +50,8 @@ Moderators oversee content and behavior in assigned channels.
 - Users in a channel can post messages.
 - Messages can optionally contain a song recommendation.
 - Messages are timestamped.
+- Each user is listening for changes in the backend's message store.
+- When a new message is detected, the UI is updated accordingly.
 
 ### Song Suggestions
 - Song suggestions are attached to messages using `attachSongSuggestion(Song)`.
