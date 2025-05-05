@@ -89,6 +89,9 @@ Granted to the users returned by `getTop3Winners(...)` and assigned via `assignT
 - `timeOutMember(User): void`  
   Temporarily removes disruptive members from Tribe interaction spaces.
 
+- `kickMember(User): void`  
+  Fully removes disruptive members from Tribe interaction spaces.
+
 - `vetoRequest(Song): void`  
   Blocks song additions via community requests if deemed inappropriate by majority of leaders.
 
