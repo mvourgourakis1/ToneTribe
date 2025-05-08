@@ -1,0 +1,55 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if user is a member of the channel
+    function isChannelMember(channelId) {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/channels/$(channelId)/members/$(request.auth.uid));
+    }
+
+    // Helper function to check if user is a moderator
+    function isModerator(channelId) {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/channels/$(channelId)/moderators/$(request.auth.uid));
+    }
+
+    // Channel rules
+    match /channels/{channelId} {
+      allow read: if isChannelMember(channelId);
+      allow create: if isAuthenticated();
+      allow update, delete: if isModerator(channelId);
+
+      // Message rules
+      match /messages/{messageId} {
+        allow read: if isChannelMember(channelId);
+        allow create: if isChannelMember(channelId) && 
+          request.resource.data.userId == request.auth.uid;
+        allow update: if (
+          isChannelMember(channelId) && 
+          request.auth.uid == resource.data.userId
+        ) || isModerator(channelId);
+        allow delete: if (
+          isChannelMember(channelId) && 
+          request.auth.uid == resource.data.userId
+        ) || isModerator(channelId);
+      }
+
+      // Channel members rules
+      match /members/{userId} {
+        allow read: if isChannelMember(channelId);
+        allow write: if isModerator(channelId);
+      }
+
+      // Channel moderators rules
+      match /moderators/{userId} {
+        allow read: if isChannelMember(channelId);
+        allow write: if isModerator(channelId);
+      }
+    }
+  }
+} 
