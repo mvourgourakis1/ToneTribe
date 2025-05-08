@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "141856292",
+    "project_id": "tone-tribe",
+    "storage_bucket": "tone-tribe.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:141856292:android:47f468b47bab490897d2b1",
+        "android_client_info": {
+          "package_name": "com.example.tonetribe"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCXMEAubCOaCZ_bnahabSHDbsL8sZgXuaw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
