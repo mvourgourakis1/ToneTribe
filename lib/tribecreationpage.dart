@@ -1,40 +1,41 @@
 import 'package:flutter/material.dart';
 
-class CreateTribePage extends StatefulWidget {
+class CreateMusicTribePage extends StatefulWidget {
   @override
-  _CreateTribePageState createState() => _CreateTribePageState();
+  _CreateMusicTribePageState createState() => _CreateMusicTribePageState();
 }
 
-class _CreateTribePageState extends State<CreateTribePage> {
+class _CreateMusicTribePageState extends State<CreateMusicTribePage> {
   final _formKey = GlobalKey<FormState>();
   final _tribeNameController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final _musicFocusController = TextEditingController();
   String? _selectedPrivacy;
   List<String> _selectedGenres = [];
   final List<String> _availableGenres = [
-    'Fiction',
-    'Science Fiction',
-    'Fantasy',
-    'Mystery',
-    'Thriller',
-    'Romance',
-    'Historical Fiction',
-    'Contemporary',
-    'Young Adult',
-    'Children\'s',
-    'Non-Fiction',
-    'Biography',
-    'History',
-    'Science',
-    'Self-Help',
-    // Add more genres as needed
+    'Rock',
+    'Pop',
+    'Hip Hop',
+    'Electronic',
+    'Country',
+    'Jazz',
+    'Classical',
+    'Blues',
+    'Reggae',
+    'Folk',
+    'Indie',
+    'Metal',
+    'Punk',
+    'R&B',
+    'Soul',
+    // Add more music genres as needed
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Create a Tribe'),
+        title: Text('Create a Music Tribe'),
       ),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(16.0),
@@ -70,6 +71,15 @@ class _CreateTribePageState extends State<CreateTribePage> {
                   }
                   return null;
                 },
+              ),
+              SizedBox(height: 20.0),
+              TextFormField(
+                controller: _musicFocusController,
+                decoration: InputDecoration(
+                  labelText: 'Specific Music Focus (Optional)',
+                  hintText: 'e.g., 90s Grunge, Progressive Metal, Lo-fi Hip Hop',
+                  border: OutlineInputBorder(),
+                ),
               ),
               SizedBox(height: 20.0),
               Text('Genres:', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -128,11 +138,13 @@ class _CreateTribePageState extends State<CreateTribePage> {
                     // Process the form data here
                     String tribeName = _tribeNameController.text;
                     String description = _descriptionController.text;
+                    String musicFocus = _musicFocusController.text;
                     // List<String> selectedGenres = _selectedGenres;
                     String privacy = _selectedPrivacy!;
 
                     print('Tribe Name: $tribeName');
                     print('Description: $description');
+                    print('Specific Music Focus: $musicFocus');
                     print('Selected Genres: $_selectedGenres');
                     print('Privacy: $privacy');
 
@@ -144,8 +156,8 @@ class _CreateTribePageState extends State<CreateTribePage> {
                       context: context,
                       builder: (BuildContext context) {
                         return AlertDialog(
-                          title: Text('Tribe Created!'),
-                          content: Text('Your tribe "$tribeName" has been created.'),
+                          title: Text('Music Tribe Created!'),
+                          content: Text('Your music tribe "$tribeName" has been created.'),
                           actions: <Widget>[
                             TextButton(
                               onPressed: () {
@@ -162,7 +174,7 @@ class _CreateTribePageState extends State<CreateTribePage> {
                     // The validator in the RadioListTile handles the error message
                   }
                 },
-                child: Text('Create Tribe'),
+                child: Text('Create Music Tribe'),
               ),
             ],
           ),
