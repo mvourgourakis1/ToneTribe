@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'models/message.dart';
+import 'services/chat_service.dart';
+import 'services/auth_service.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
@@ -12,58 +14,30 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   final TextEditingController _messageController = TextEditingController();
-  final List<Message> _messages = [];
   final ScrollController _scrollController = ScrollController();
+  final ChatService _chatService = ChatService();
+  final AuthService _authService = AuthService();
   Message? _replyingTo;
   int? _hoveredMessageIndex;
+  String _currentChannelId = 'general'; // Default channel
 
   @override
   void initState() {
     super.initState();
-    // Add some sample messages
-    _messages.addAll([
-      Message(
-        userId: '1',
-        username: 'John Doe',
-        profileImageUrl: 'https://via.placeholder.com/50',
-        content: 'Hey everyone! How\'s it going?',
-        timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
-      ),
-      Message(
-        userId: '2',
-        username: 'Jane Smith',
-        profileImageUrl: 'https://via.placeholder.com/50',
-        content: 'Doing great! Just working on some new features.',
-        timestamp: DateTime.now().subtract(const Duration(minutes: 3)),
-      ),
-    ]);
   }
 
   void _sendMessage() {
     if (_messageController.text.trim().isEmpty) return;
 
-    setState(() {
-      _messages.add(
-        Message(
-          userId: '1', // Current user ID
-          username: 'John Doe', // Current username
-          profileImageUrl: 'https://via.placeholder.com/50',
-          content: _messageController.text,
-          timestamp: DateTime.now(),
-          replyTo: _replyingTo,
-        ),
-      );
-      _messageController.clear();
-      _replyingTo = null;
-    });
+    _chatService.sendMessage(
+      channelId: _currentChannelId,
+      content: _messageController.text,
+      replyTo: _replyingTo,
+    );
 
-    // Scroll to bottom
-    Future.delayed(const Duration(milliseconds: 100), () {
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
+    _messageController.clear();
+    setState(() {
+      _replyingTo = null;
     });
   }
 
@@ -107,6 +81,14 @@ class _MyHomePageState extends State<MyHomePage> {
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
             ),
+            if (message.userId == _authService.currentUser?.uid)
+              IconButton(
+                icon: const Icon(Icons.delete_outline, size: 20),
+                onPressed: () => _chatService.deleteMessage(_currentChannelId, message.id),
+                tooltip: 'Delete',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
           ],
         ),
       ),
@@ -119,132 +101,155 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text(widget.title),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () => _authService.signOut(),
+            tooltip: 'Sign Out',
+          ),
+        ],
       ),
       body: Column(
         children: [
           Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(16),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                final message = _messages[index];
-                final isMe = message.userId == '1';
+            child: StreamBuilder<List<Message>>(
+              stream: _chatService.getMessages(_currentChannelId),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
 
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: Row(
-                    mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (!isMe) ...[
-                        CircleAvatar(
-                          backgroundImage: NetworkImage(message.profileImageUrl),
-                          radius: 20,
-                        ),
-                        const SizedBox(width: 8),
-                      ],
-                      Flexible(
-                        child: MouseRegion(
-                          onEnter: (_) => setState(() => _hoveredMessageIndex = index),
-                          onExit: (_) => setState(() => _hoveredMessageIndex = null),
-                          child: GestureDetector(
-                            onLongPress: () => _startReply(message),
-                            child: Column(
-                              crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                              children: [
-                                if (!isMe)
-                                  Text(
-                                    message.username,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                Stack(
+                if (!snapshot.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final messages = snapshot.data!;
+                final currentUser = _authService.currentUser;
+
+                return ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.all(16),
+                  itemCount: messages.length,
+                  itemBuilder: (context, index) {
+                    final message = messages[index];
+                    final isMe = message.userId == currentUser?.uid;
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Row(
+                        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (!isMe) ...[
+                            CircleAvatar(
+                              backgroundImage: NetworkImage(message.profileImageUrl),
+                              radius: 20,
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                          Flexible(
+                            child: MouseRegion(
+                              onEnter: (_) => setState(() => _hoveredMessageIndex = index),
+                              onExit: (_) => setState(() => _hoveredMessageIndex = null),
+                              child: GestureDetector(
+                                onLongPress: () => _startReply(message),
+                                child: Column(
+                                  crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                                   children: [
-                                    Column(
-                                      crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                                      children: [
-                                        if (message.replyTo != null) ...[
-                                          Container(
-                                            margin: const EdgeInsets.only(bottom: 4),
-                                            padding: const EdgeInsets.all(8),
-                                            decoration: BoxDecoration(
-                                              color: Colors.grey.withOpacity(0.1),
-                                              borderRadius: BorderRadius.circular(8),
-                                            ),
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  'Replying to ${message.replyTo!.username}',
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    color: Colors.grey[600],
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                                Text(
-                                                  message.replyTo!.content,
-                                                  style: TextStyle(
-                                                    fontSize: 12,
-                                                    color: Colors.grey[600],
-                                                  ),
-                                                  maxLines: 1,
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                        Container(
-                                          padding: const EdgeInsets.all(12),
-                                          decoration: BoxDecoration(
-                                            color: isMe
-                                                ? Theme.of(context).colorScheme.primary
-                                                : Theme.of(context).colorScheme.secondary.withOpacity(0.1),
-                                            borderRadius: BorderRadius.circular(16),
-                                          ),
-                                          child: Text(
-                                            message.content,
-                                            style: TextStyle(
-                                              color: isMe ? Colors.white : Colors.black,
-                                            ),
-                                          ),
+                                    if (!isMe)
+                                      Text(
+                                        message.username,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
                                         ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          '${message.timestamp.hour}:${message.timestamp.minute.toString().padLeft(2, '0')}',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey[600],
-                                          ),
+                                      ),
+                                    Stack(
+                                      children: [
+                                        Column(
+                                          crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                                          children: [
+                                            if (message.replyTo != null) ...[
+                                              Container(
+                                                margin: const EdgeInsets.only(bottom: 4),
+                                                padding: const EdgeInsets.all(8),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.grey.withOpacity(0.1),
+                                                  borderRadius: BorderRadius.circular(8),
+                                                ),
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      'Replying to ${message.replyTo!.username}',
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        color: Colors.grey[600],
+                                                        fontWeight: FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                    Text(
+                                                      message.replyTo!.content,
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        color: Colors.grey[600],
+                                                      ),
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                            Container(
+                                              padding: const EdgeInsets.all(12),
+                                              decoration: BoxDecoration(
+                                                color: isMe
+                                                    ? Theme.of(context).colorScheme.primary
+                                                    : Theme.of(context).colorScheme.secondary.withOpacity(0.1),
+                                                borderRadius: BorderRadius.circular(16),
+                                              ),
+                                              child: Text(
+                                                message.content,
+                                                style: TextStyle(
+                                                  color: isMe ? Colors.white : Colors.black,
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              '${message.timestamp.hour}:${message.timestamp.minute.toString().padLeft(2, '0')}',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey[600],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        Positioned(
+                                          top: 0,
+                                          right: isMe ? null : 0,
+                                          left: isMe ? 0 : null,
+                                          child: _buildMessageActions(message, index),
                                         ),
                                       ],
                                     ),
-                                    Positioned(
-                                      top: 0,
-                                      right: isMe ? null : 0,
-                                      left: isMe ? 0 : null,
-                                      child: _buildMessageActions(message, index),
-                                    ),
                                   ],
                                 ),
-                              ],
+                              ),
                             ),
                           ),
-                        ),
+                          if (isMe) ...[
+                            const SizedBox(width: 8),
+                            CircleAvatar(
+                              backgroundImage: NetworkImage(message.profileImageUrl),
+                              radius: 20,
+                            ),
+                          ],
+                        ],
                       ),
-                      if (isMe) ...[
-                        const SizedBox(width: 8),
-                        CircleAvatar(
-                          backgroundImage: NetworkImage(message.profileImageUrl),
-                          radius: 20,
-                        ),
-                      ],
-                    ],
-                  ),
+                    );
+                  },
                 );
               },
             ),
