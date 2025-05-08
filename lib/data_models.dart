@@ -24,7 +24,7 @@ class Post {
   final DateTime timestamp;
   int upvotes;
   int downvotes;
-  final List<Comment> comments;
+  List<Comment> comments; // Made mutable for easier local updates in demo
   final List<String> tags; // Added tags for filtering
 
   Post({
@@ -36,7 +36,7 @@ class Post {
     this.upvotes = 0,
     this.downvotes = 0,
     List<Comment>? comments,
-    this.tags = const [], // Initialize with an empty list if not provided
+    this.tags = const [],
   }) : comments = comments ?? [];
 }
 
@@ -49,7 +49,7 @@ class Comment {
   final DateTime timestamp;
   int upvotes;
   int downvotes;
-  final List<Comment> replies;
+  List<Comment> replies; // Made mutable for easier local updates in demo
 
   Comment({
     required this.id,

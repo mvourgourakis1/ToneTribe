@@ -4,22 +4,46 @@ import '../data_models.dart';
 
 class PostDetailScreen extends StatefulWidget {
   final Post post;
-  final User currentUser; // Pass the current user
+  final User currentUser;
+  final String? initialUserPostVote; // Receive initial vote status for the main post
 
-  const PostDetailScreen({super.key, required this.post, required this.currentUser});
+  const PostDetailScreen({
+    super.key,
+    required this.post,
+    required this.currentUser,
+    this.initialUserPostVote,
+  });
 
   @override
   State<PostDetailScreen> createState() => _PostDetailScreenState();
 }
 
 class _PostDetailScreenState extends State<PostDetailScreen> {
-  late Post _currentPostData; // To allow updating votes and comments locally
+  late Post _currentPostData; // Local mutable copy of the post
   final TextEditingController _replyController = TextEditingController();
+
+  // --- LOCAL VOTE TRACKING (SIMULATION) ---
+  late String? _userVoteForThisPost; // User's vote for the main post being viewed
+  // Key: commentId, Value: 'up' or 'down' or null
+  final Map<String, String?> _userCommentVotes = {};
 
   @override
   void initState() {
     super.initState();
-    _currentPostData = widget.post; // Start with the passed post data
+    // Deep copy the post to work on a local mutable version
+    _currentPostData = Post(
+      id: widget.post.id,
+      title: widget.post.title,
+      content: widget.post.content,
+      author: widget.post.author,
+      timestamp: widget.post.timestamp,
+      upvotes: widget.post.upvotes,
+      downvotes: widget.post.downvotes,
+      tags: List.from(widget.post.tags), // Copy tags list
+      comments: widget.post.comments.map((c) => _copyComment(c)).toList(), // Deep copy comments
+    );
+
+    _userVoteForThisPost = widget.initialUserPostVote;
 
     // --- FIREBASE LISTENING FOR POST UPDATES & COMMENTS ---
     // In a real app, you might want to listen for real-time updates to this specific post
@@ -27,10 +51,10 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     //
     // Example for post updates:
     // FirebaseFirestore.instance.collection('posts').doc(widget.post.id).snapshots().listen((snapshot) {
-    //   if (snapshot.exists) {
+    //   if (snapshot.exists && mounted) { // Check mounted
     //     setState(() {
+    //       // Update _currentPostData carefully, especially comment merging if comments are also live
     //       _currentPostData = Post.fromFirestore(snapshot.data()!, snapshot.id);
-    //       // You might need a more sophisticated way to merge comments if they are also live
     //     });
     //   }
     // });
@@ -38,14 +62,111 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     // Example for comments (if comments are a subcollection):
     // FirebaseFirestore.instance
     //    .collection('posts').doc(widget.post.id).collection('comments')
-    //    .orderBy('timestamp', descending: true) // Or however you order them
+    //    .orderBy('timestamp', descending: true)
     //    .snapshots()
     //    .listen((snapshot) {
-    //      final newComments = snapshot.docs.map((doc) => Comment.fromFirestore(doc.data(), doc.id)).toList();
-    //      setState(() {
-    //        _currentPostData.comments = newComments; // This assumes your Post model is mutable or you recreate it
-    //      });
+    //      if (mounted) {
+    //        final newComments = snapshot.docs.map((doc) => Comment.fromFirestore(doc.data(), doc.id)).toList();
+    //        setState(() {
+    //          _currentPostData.comments = newComments; // This assumes your Post model's comments list is mutable or you recreate it
+    //          // Also re-initialize _userCommentVotes for these new/updated comments
+    //          _userCommentVotes.clear();
+    //          for (var comment in _currentPostData.comments) {
+    //            _initializeCommentVotesRecursive(comment);
+    //          }
+    //        });
+    //      }
     // });
+
+    // Initialize local vote tracking for existing comments
+    for (var comment in _currentPostData.comments) {
+      _initializeCommentVotesRecursive(comment);
+    }
+  }
+
+  // Helper to recursively initialize _userCommentVotes for comments and their replies
+  void _initializeCommentVotesRecursive(Comment comment) {
+    _userCommentVotes[comment.id] = null; // Assume no vote initially, or fetch from Firebase
+    for (var reply in comment.replies) {
+      _initializeCommentVotesRecursive(reply);
+    }
+  }
+
+  // Helper for deep copying comments and their replies
+  Comment _copyComment(Comment original) {
+    return Comment(
+      id: original.id,
+      postId: original.postId,
+      parentCommentId: original.parentCommentId,
+      author: original.author,
+      text: original.text,
+      timestamp: original.timestamp,
+      upvotes: original.upvotes,
+      downvotes: original.downvotes,
+      replies: original.replies.map((r) => _copyComment(r)).toList(),
+    );
+  }
+
+  // --- VOTING LOGIC FOR THE MAIN POST ON THIS SCREEN ---
+  void _handleMainPostVote(String voteType) { // voteType: 'up' or 'down'
+    setState(() {
+      final currentVote = _userVoteForThisPost;
+      // --- FIREBASE: ATOMIC VOTE UPDATE FOR MAIN POST (Similar to HomeScreen) ---
+      // This logic would mirror the Firebase transaction described in HomeScreen's _handlePostVote
+      // but target _currentPostData and _userVoteForThisPost.
+
+      // Local simulation:
+      if (currentVote == voteType) { // Undoing vote
+        _userVoteForThisPost = null;
+        if (voteType == 'up') _currentPostData.upvotes--;
+        else _currentPostData.downvotes--;
+      } else { // New vote or changing vote
+        if (currentVote == 'up') _currentPostData.upvotes--;
+        if (currentVote == 'down') _currentPostData.downvotes--;
+
+        _userVoteForThisPost = voteType;
+        if (voteType == 'up') _currentPostData.upvotes++;
+        else _currentPostData.downvotes++;
+      }
+    });
+    // In a real app, this local change would trigger an update to Firebase.
+    // The UI might then update based on a Firebase listener, or you'd confirm success.
+  }
+
+  // --- VOTING LOGIC FOR COMMENTS ---
+  void _handleCommentVote(Comment comment, String voteType) {
+    setState(() {
+      // --- FIREBASE: ATOMIC VOTE UPDATE FOR COMMENT ---
+      // Similar to post voting, this would involve a Firebase transaction to:
+      // 1. Update the user's vote record for this specific comment.
+      // 2. Atomically increment/decrement the comment's upvote/downvote count in Firestore.
+      _updateCommentVoteRecursive(_currentPostData.comments, comment.id, voteType);
+    });
+  }
+
+  // Recursive helper to find and update comment votes in the local state
+  bool _updateCommentVoteRecursive(List<Comment> commentsList, String targetCommentId, String voteType) {
+    for (var c in commentsList) {
+      if (c.id == targetCommentId) {
+        final currentVote = _userCommentVotes[c.id];
+        if (currentVote == voteType) { // Undoing vote
+          _userCommentVotes[c.id] = null;
+          if (voteType == 'up') c.upvotes--; else c.downvotes--;
+        } else { // New or changing vote
+          if (currentVote == 'up') c.upvotes--;
+          if (currentVote == 'down') c.downvotes--;
+          _userCommentVotes[c.id] = voteType;
+          if (voteType == 'up') c.upvotes++; else c.downvotes++;
+        }
+        return true; // Found and updated
+      }
+      if (c.replies.isNotEmpty) {
+        if (_updateCommentVoteRecursive(c.replies, targetCommentId, voteType)) {
+          return true; // Found in nested replies
+        }
+      }
+    }
+    return false; // Not found in this branch
   }
 
   // --- METHOD PLACEHOLDER FOR REPLYING TO THE MAIN POST ---
@@ -54,34 +175,13 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
 
     // This method would interact with your backend (e.g., Firebase)
     // to add a new comment to the post. It uses widget.currentUser.
-    //
     // Example Firebase interaction (conceptual):
-    //
     // String newCommentId = FirebaseFirestore.instance.collection('posts').doc(_currentPostData.id).collection('comments').doc().id;
-    // Comment newComment = Comment(
-    //   id: newCommentId,
-    //   postId: _currentPostData.id,
-    //   author: widget.currentUser.username, // Or widget.currentUser.id
-    //   text: text,
-    //   timestamp: DateTime.now(),
-    //   // upvotes, downvotes, replies initialized
-    // );
-    //
-    // FirebaseFirestore.instance
-    //   .collection('posts').doc(_currentPostData.id)
-    //   .collection('comments').doc(newCommentId)
-    //   .set(newComment.toMap())
-    //   .then((_) {
-    //     print("Comment added successfully!");
-    //     _replyController.clear();
-    //     // Optionally, optimistically add to local list or rely on Firebase listener
-    //   })
-    //   .catchError((error) {
-    //     print("Failed to add comment: $error");
-    //     // Show error
-    //   });
+    // Comment newCommentData = Comment( /* ... data ... */ );
+    // FirebaseFirestore.instance.collection('posts').doc(_currentPostData.id).collection('comments').doc(newCommentId).set(newCommentData.toMap())
+    //   .then((_) { /* Success */ }).catchError((error) { /* Handle error */ });
 
-    // For now, add locally and show a snackbar
+    // For demo, add locally:
     final newComment = Comment(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       postId: _currentPostData.id,
@@ -90,7 +190,8 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       timestamp: DateTime.now(),
     );
     setState(() {
-      _currentPostData.comments.insert(0, newComment); // Add to the beginning
+      _currentPostData.comments.insert(0, newComment); // Add to the beginning of the list
+      _userCommentVotes[newComment.id] = null; // Initialize vote status for the new comment
     });
     _replyController.clear();
     ScaffoldMessenger.of(context).showSnackBar(
@@ -102,35 +203,16 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   void _handleReplyToComment(Comment parentComment, String text) {
      if (text.trim().isEmpty) return;
     // This method would interact with your backend (e.g., Firebase)
-    // to add a new reply to a specific comment. It uses widget.currentUser.
-    // The 'parentComment' object helps identify where to add the reply.
-    //
-    // Storing nested replies in Firestore can be done in several ways:
-    // 1. As a subcollection under the parent comment's document.
-    // 2. As a list/array within the parent comment's document (less scalable for deep nesting).
-    //
-    // Example (conceptual, assuming replies are a list in the parent comment document):
-    //
-    // String newReplyId = FirebaseFirestore.instance.collection('posts').doc(_currentPostData.id)... .doc().id; // Path to new reply
-    // Comment newReply = Comment(
-    //   id: newReplyId,
-    //   postId: _currentPostData.id,
-    //   parentCommentId: parentComment.id,
-    //   author: widget.currentUser.username,
-    //   text: text,
-    //   timestamp: DateTime.now(),
-    // );
-    //
-    // // You'd need to fetch the parent comment, add the reply to its 'replies' list,
-    // // and then update the parent comment document in Firebase.
-    // // FirebaseFirestore.instance
-    // //   .collection('posts').doc(_currentPostData.id)
-    // //   .collection('comments').doc(parentComment.id)
-    // //   .update({'replies': FieldValue.arrayUnion([newReply.toMap()])}) // Add to array
-    // //   .then((_) { print("Reply added"); })
-    // //   .catchError((error) { print("Failed to add reply: $error"); });
+    // to add a new reply to a specific comment.
+    // Storing nested replies in Firestore can be done via subcollections or arrays.
+    // Example (conceptual, adding to a 'replies' array in parent comment):
+    // Comment newReplyData = Comment( /* ... data ... */ );
+    // FirebaseFirestore.instance.collection('posts').doc(_currentPostData.id)
+    //   .collection('comments').doc(parentComment.id)
+    //   .update({'replies': FieldValue.arrayUnion([newReplyData.toMap()])})
+    //   .then((_) { /* Success */ }).catchError((error) { /* Handle error */ });
 
-    // For now, add locally
+    // For demo, add locally:
     final newReply = Comment(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       postId: _currentPostData.id,
@@ -142,19 +224,23 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     setState(() {
       // Find the parent comment and add the reply
       // This is a simplified local update; real updates might need more robust state management
-      void _addReplyRecursively(List<Comment> comments, String parentId, Comment reply) {
-          for (var comment in comments) {
-              if (comment.id == parentId) {
-                  comment.replies.insert(0, reply);
-                  return;
+      bool _addReplyRecursively(List<Comment> comments, String targetParentId, Comment replyToAdd) {
+          for (var comment_ in comments) {
+              if (comment_.id == targetParentId) {
+                  comment_.replies.insert(0, replyToAdd); // Add to the beginning
+                  _userCommentVotes[replyToAdd.id] = null; // Initialize vote status for the new reply
+                  return true;
               }
-              _addReplyRecursively(comment.replies, parentId, reply);
+              if (comment_.replies.isNotEmpty) {
+                if(_addReplyRecursively(comment_.replies, targetParentId, replyToAdd)) return true;
+              }
           }
+          return false;
       }
       _addReplyRecursively(_currentPostData.comments, parentComment.id, newReply);
     });
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Replied to comment by ${widget.currentUser.username} (Locally added)')),
+      SnackBar(content: Text('Replied to ${parentComment.author} by ${widget.currentUser.username} (Locally added)')),
     );
   }
 
@@ -170,17 +256,35 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             autofocus: true,
             decoration: const InputDecoration(hintText: "Write your reply..."),
             maxLines: 3,
+            textInputAction: TextInputAction.send,
+            onSubmitted: (value) { // Allow submitting with enter key
+                 if (value.trim().isNotEmpty) {
+                    if (parentComment == null) {
+                        _handleReplyToPost(dialogReplyController.text);
+                    } else {
+                        _handleReplyToComment(parentComment, dialogReplyController.text);
+                    }
+                    Navigator.pop(context); // Close dialog after submitting
+                 }
+            },
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
             ElevatedButton(
               onPressed: () {
-                if (parentComment == null) {
-                  _handleReplyToPost(dialogReplyController.text);
+                final text = dialogReplyController.text;
+                if (text.trim().isNotEmpty) {
+                    if (parentComment == null) {
+                    _handleReplyToPost(text);
+                    } else {
+                    _handleReplyToComment(parentComment, text);
+                    }
+                    Navigator.pop(context);
                 } else {
-                  _handleReplyToComment(parentComment, dialogReplyController.text);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("Reply cannot be empty!"))
+                    );
                 }
-                Navigator.pop(context);
               },
               child: const Text("Reply"),
             ),
@@ -189,7 +293,6 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
       },
     );
   }
-
 
   Widget _buildPostContent(Post post) {
     return Padding(
@@ -228,30 +331,22 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             children: [
               IconButton(
                 icon: const Icon(Icons.question_mark, size: 20),
+                tooltip: "Info/Options",
                 onPressed: () {},
               ),
               IconButton(
-                icon: Icon(Icons.arrow_downward, size: 20, color: post.downvotes > 0 ? Colors.blue : Colors.grey),
-                onPressed: () {
-                  // --- VOTE LIMITING COMMENT ---
-                  // Similar to HomeScreen, check if widget.currentUser has already voted.
-                  // Update Firebase accordingly.
-                  setState(() {
-                    _currentPostData.downvotes++; // Local update for responsiveness
-                  });
-                  // Potentially return updated post to HomeScreen via Navigator.pop(context, _currentPostData);
-                },
+                icon: Icon(Icons.arrow_downward, size: 20,
+                    color: _userVoteForThisPost == 'down' ? Colors.blue : Colors.grey),
+                tooltip: "Downvote (${post.downvotes})",
+                onPressed: () => _handleMainPostVote('down'),
               ),
               Text("${post.downvotes}"),
               const SizedBox(width: 8),
               IconButton(
-                icon: Icon(Icons.arrow_upward, size: 20, color: post.upvotes > 0 ? Colors.red : Colors.grey),
-                onPressed: () {
-                  // --- VOTE LIMITING COMMENT ---
-                  setState(() {
-                    _currentPostData.upvotes++; // Local update
-                  });
-                },
+                icon: Icon(Icons.arrow_upward, size: 20,
+                    color: _userVoteForThisPost == 'up' ? Colors.red : Colors.grey),
+                tooltip: "Upvote (${post.upvotes})",
+                onPressed: () => _handleMainPostVote('up'),
               ),
               Text("${post.upvotes}"),
               const Spacer(),
@@ -269,8 +364,9 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   }
 
   Widget _buildCommentItem(Comment comment, {int depth = 0}) {
+    final String? userVote = _userCommentVotes[comment.id];
     return Padding(
-      padding: EdgeInsets.only(left: depth * 16.0, top: 8.0, bottom: 0.0, right: 8.0), // Reduced left padding
+      padding: EdgeInsets.only(left: depth * 16.0, top: 8.0, bottom: 0.0, right: 8.0),
       child: Card(
         elevation: depth == 0 ? 1 : 0,
         color: depth > 0 ? Theme.of(context).colorScheme.surface.withOpacity(0.5) : Theme.of(context).cardColor,
@@ -280,7 +376,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         ),
         margin: const EdgeInsets.symmetric(vertical: 4),
         child: Padding(
-          padding: const EdgeInsets.all(10.0), // Reduced padding
+          padding: const EdgeInsets.all(10.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -304,28 +400,25 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.question_mark, size: 16),
+                    tooltip: "Info/Options",
                     onPressed: () {},
                     padding: EdgeInsets.zero, constraints: const BoxConstraints(),
                   ),
                   const SizedBox(width: 4),
                   IconButton(
-                    icon: Icon(Icons.arrow_downward, size: 16, color: comment.downvotes > 0 ? Colors.blue : Colors.grey),
-                    onPressed: () {
-                       // --- VOTE LIMITING COMMENT FOR COMMENTS ---
-                       // Similar logic as post voting, but for comments.
-                       // Store user votes for comments in Firebase, likely in a subcollection of the comment.
-                       setState(() { comment.downvotes++; });
-                    },
+                    icon: Icon(Icons.arrow_downward, size: 16,
+                        color: userVote == 'down' ? Colors.blue : Colors.grey),
+                    tooltip: "Downvote (${comment.downvotes})",
+                    onPressed: () => _handleCommentVote(comment, 'down'),
                      padding: EdgeInsets.zero, constraints: const BoxConstraints(),
                   ),
                    Text("${comment.downvotes}", style: const TextStyle(fontSize: 10)),
                   const SizedBox(width: 6),
                   IconButton(
-                    icon: Icon(Icons.arrow_upward, size: 16, color: comment.upvotes > 0 ? Colors.red : Colors.grey),
-                    onPressed: () {
-                       // --- VOTE LIMITING COMMENT FOR COMMENTS ---
-                      setState(() { comment.upvotes++; });
-                    },
+                    icon: Icon(Icons.arrow_upward, size: 16,
+                        color: userVote == 'up' ? Colors.red : Colors.grey),
+                    tooltip: "Upvote (${comment.upvotes})",
+                    onPressed: () => _handleCommentVote(comment, 'up'),
                      padding: EdgeInsets.zero, constraints: const BoxConstraints(),
                   ),
                   Text("${comment.upvotes}", style: const TextStyle(fontSize: 10)),
@@ -339,7 +432,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               ),
               if (comment.replies.isNotEmpty)
                 Padding(
-                  padding: const EdgeInsets.only(top: 0.0), // No extra top padding for replies list
+                  padding: const EdgeInsets.only(top: 0.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: comment.replies.map((reply) => _buildCommentItem(reply, depth: depth + 1)).toList(),
@@ -357,10 +450,19 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_currentPostData.title, overflow: TextOverflow.ellipsis),
-        // Pass back the potentially updated post data when navigating back
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context, _currentPostData),
+          onPressed: () {
+            // Pass back the updated post data AND the user's vote for THIS post
+            Navigator.pop(context, {
+              'postId': _currentPostData.id,
+              'newUserVote': _userVoteForThisPost, // The user's vote for the main post
+              'newUpvotes': _currentPostData.upvotes, // Total upvotes for the main post
+              'newDownvotes': _currentPostData.downvotes, // Total downvotes for the main post
+              // For simplicity, not passing back individual comment updates or full comment list.
+              // HomeScreen would typically re-fetch or rely on listeners for detailed comment changes.
+            });
+          },
         ),
       ),
       body: SingleChildScrollView(
@@ -369,7 +471,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
           children: [
             _buildPostContent(_currentPostData),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
               child: Text(
                 "Replies (${_currentPostData.comments.length})",
                 style: Theme.of(context).textTheme.titleMedium,
@@ -382,14 +484,14 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
               )
             else
               ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
+                shrinkWrap: true, // Important for ListView inside SingleChildScrollView
+                physics: const NeverScrollableScrollPhysics(), // Disable scrolling for this ListView
                 itemCount: _currentPostData.comments.length,
                 itemBuilder: (context, index) {
                   return _buildCommentItem(_currentPostData.comments[index]);
                 },
               ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 20), // Some spacing at the bottom
           ],
         ),
       ),
@@ -397,7 +499,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
   }
 }
 
-// Helper for time ago formatting (same as before)
+// Helper for time ago formatting (you might want a package like `timeago` for more features)
 class TimeAgo {
   static String timeAgoSinceDate(DateTime date, {bool numericDates = true}) {
     final date2 = DateTime.now();

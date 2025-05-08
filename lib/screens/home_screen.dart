@@ -16,28 +16,42 @@ class _HomeScreenState extends State<HomeScreen> {
   String _searchQuery = '';
   String? _selectedFilter;
 
-  // Updated filters to include tags
   final List<String> _filters = [
-    "All",
-    "Rock", // Tag
-    "Pop",  // Tag
-    "Classic Rock", // Tag
-    "Most Upvoted",
-    "Newest"
+    "All", "Rock", "Pop", "Classic Rock", "Most Upvoted", "Newest"
   ];
 
   // Get the current user (dummy data for now)
   final User _currentUser = sampleCurrentUser;
 
+  // --- LOCAL VOTE TRACKING (SIMULATION) ---
+  // In a real Firebase app, this information would be fetched alongside posts
+  // or derived from a separate 'userVotes' collection.
+  // Key: postId, Value: 'up' or 'down' or null if no vote
+  final Map<String, String?> _userPostVotes = {};
+
   @override
   void initState() {
     super.initState();
-    // --- FIREBASE FETCHING COMMENT ---
+    // --- FIREBASE FETCHING POSTS COMMENT ---
     // In a real app, you would fetch posts from Firebase here.
     // Example:
     // FirebaseFirestore.instance.collection('posts').snapshots().listen((snapshot) {
     //   setState(() {
     //     _allPosts = snapshot.docs.map((doc) => Post.fromFirestore(doc.data(), doc.id)).toList();
+    //     // --- FIREBASE: FETCHING USER'S VOTES FOR POSTS ---
+    //     // After fetching posts, you'd also fetch the current user's vote status for each post.
+    //     // This might involve a separate query or joining data.
+    //     // For example, if you have a 'userVotes/{userId}/postVotes/{postId}' structure:
+    //     // for (var post in _allPosts) {
+    //     //   final voteDoc = await FirebaseFirestore.instance
+    //     //       .collection('userVotes').doc(_currentUser.id)
+    //     //       .collection('postVotes').doc(post.id).get();
+    //     //   if (voteDoc.exists) {
+    //     //     _userPostVotes[post.id] = voteDoc.data()?['voteType']; // 'up' or 'down'
+    //     //   } else {
+    //     //     _userPostVotes[post.id] = null; // No vote recorded
+    //     //   }
+    //     // }
     //     _applyFilters();
     //   });
     // }).onError((error) {
@@ -45,7 +59,10 @@ class _HomeScreenState extends State<HomeScreen> {
     //   print("Error fetching posts: $error");
     // });
     // For now, using sample data:
-    _allPosts = List.from(samplePosts);
+    _allPosts = List.from(samplePosts); // Make a mutable copy
+    for (var post in _allPosts) { // Initialize vote status (simulating no prior votes)
+        _userPostVotes[post.id] = null;
+    }
     _applyFilters();
   }
 
@@ -53,7 +70,8 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _filteredPosts = _allPosts.where((post) {
         final matchesSearch = post.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                              post.content.toLowerCase().contains(_searchQuery.toLowerCase());
+                              post.content.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                              post.tags.any((tag) => tag.toLowerCase().contains(_searchQuery.toLowerCase()));
         
         bool matchesFilter = true;
         if (_selectedFilter != null && _selectedFilter != "All") {
@@ -74,8 +92,9 @@ class _HomeScreenState extends State<HomeScreen> {
       } else if (_selectedFilter == "Newest") {
          _filteredPosts.sort((a, b) => b.timestamp.compareTo(a.timestamp));
       } else {
-        // Default sort or sort by relevance if search is active (not implemented here)
-        _filteredPosts.sort((a,b) => b.timestamp.compareTo(a.timestamp)); // Default to newest if no specific sort
+        // Default sort (e.g., by newest) if no specific sort filter is active
+        // or if a tag filter is active, still sort by newest within that tag.
+        _filteredPosts.sort((a,b) => b.timestamp.compareTo(a.timestamp));
       }
     });
   }
@@ -88,35 +107,30 @@ class _HomeScreenState extends State<HomeScreen> {
     // Example Firebase interaction (conceptual):
     //
     // String newPostId = FirebaseFirestore.instance.collection('posts').doc().id;
-    // Post newPost = Post(
+    // Post newPostData = Post(
     //   id: newPostId,
     //   title: title,
     //   content: content,
     //   author: _currentUser.username, // Or _currentUser.id
     //   timestamp: DateTime.now(),
     //   tags: tags,
-    //   // upvotes, downvotes, comments initialized to 0 or empty
+    //   upvotes: 0, downvotes: 0, comments: [],
     // );
     //
-    // FirebaseFirestore.instance.collection('posts').doc(newPostId).set(newPost.toMap())
+    // FirebaseFirestore.instance.collection('posts').doc(newPostId).set(newPostData.toMap()) // Assuming a toMap method
     //   .then((_) {
     //     print("Post created successfully!");
-    //     // Optionally refresh posts or add to local list optimistically
-    //     // _fetchPosts(); // Or add newPost to _allPosts and call _applyFilters()
+    //     // Firebase listener would automatically update the UI if set up correctly.
+    //     // If not, you might call _fetchPosts() or manually add.
     //   })
     //   .catchError((error) {
     //     print("Failed to create post: $error");
     //     // Show error to user
     //   });
 
-    // For now, just show a snackbar
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Create New Post: "$title" by ${_currentUser.username} (Not implemented yet)')),
-    );
-    // In a real app, you'd likely navigate away or refresh the list.
-    // For this demo, let's add it to the local list.
+    // For demo, add locally:
     final newPost = Post(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      id: DateTime.now().millisecondsSinceEpoch.toString(), // Use a more robust ID in real app
       title: title,
       content: content,
       author: _currentUser.username,
@@ -125,14 +139,18 @@ class _HomeScreenState extends State<HomeScreen> {
     );
     setState(() {
       _allPosts.insert(0, newPost); // Add to the beginning
+      _userPostVotes[newPost.id] = null; // Initialize vote status for the new post
       _applyFilters(); // Re-apply filters to show the new post
     });
+     ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Created Post: "$title" by ${_currentUser.username}')),
+    );
   }
 
   void _showCreatePostDialog() {
     final titleController = TextEditingController();
     final contentController = TextEditingController();
-    final tagsController = TextEditingController(); // For comma-separated tags
+    final tagsController = TextEditingController();
 
     showDialog(
       context: context,
@@ -160,7 +178,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   _handleCreateNewPost(title, content, tags);
                   Navigator.pop(context);
                 } else {
-                  // Show error if fields are empty
                   ScaffoldMessenger.of(context).showSnackBar(
                      const SnackBar(content: Text("Title and Content cannot be empty!"))
                   );
@@ -174,10 +191,84 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // --- VOTING LOGIC FOR POSTS ---
+  void _handlePostVote(Post post, String voteType) { // voteType: 'up' or 'down'
+    setState(() {
+      final currentVote = _userPostVotes[post.id];
+
+      // --- FIREBASE: ATOMIC UPDATES FOR VOTES ---
+      // In Firebase, this entire block would be part of a transaction or batched write
+      // to ensure atomicity:
+      // 1. Read the user's current vote for the post from 'userVotes/{userId}/postVotes/{postId}'.
+      // 2. Calculate new post counts and new user vote status.
+      // 3. Write the new user vote status to 'userVotes/{userId}/postVotes/{postId}'.
+      // 4. Update the post's aggregate counts ('posts/{postId}/upvotes', 'posts/{postId}/downvotes')
+      //    using FieldValue.increment(value) where value is +1, -1, or adjusts for vote changes.
+      //
+      // Example of increment/decrement logic with vote switching:
+      // DocumentReference postRef = FirebaseFirestore.instance.collection('posts').doc(post.id);
+      // DocumentReference userVoteRef = FirebaseFirestore.instance.collection('userVotes').doc(_currentUser.id).collection('postVotes').doc(post.id);
+      //
+      // FirebaseFirestore.instance.runTransaction((transaction) async {
+      //   DocumentSnapshot userVoteSnap = await transaction.get(userVoteRef);
+      //   String? previousUserVote = userVoteSnap.exists ? userVoteSnap.get('voteType') : null;
+      //
+      //   Map<String, dynamic> postUpdates = {};
+      //   String? newUserVoteAction; // 'set_up', 'set_down', 'remove'
+      //
+      //   if (previousUserVote == voteType) { // Undoing vote
+      //     if (voteType == 'up') postUpdates['upvotes'] = FieldValue.increment(-1);
+      //     else postUpdates['downvotes'] = FieldValue.increment(-1);
+      //     newUserVoteAction = 'remove';
+      //   } else { // New vote or changing vote
+      //     if (voteType == 'up') {
+      //       postUpdates['upvotes'] = FieldValue.increment(1);
+      //       if (previousUserVote == 'down') postUpdates['downvotes'] = FieldValue.increment(-1); // Was downvoted
+      //     } else { // voteType == 'down'
+      //       postUpdates['downvotes'] = FieldValue.increment(1);
+      //       if (previousUserVote == 'up') postUpdates['upvotes'] = FieldValue.increment(-1); // Was upvoted
+      //     }
+      //     newUserVoteAction = voteType == 'up' ? 'set_up' : 'set_down';
+      //   }
+      //
+      //   transaction.update(postRef, postUpdates);
+      //   if (newUserVoteAction == 'remove') {
+      //     transaction.delete(userVoteRef);
+      //   } else {
+      //     transaction.set(userVoteRef, {'voteType': voteType});
+      //   }
+      // });
+
+      // Local simulation:
+      if (currentVote == voteType) { // User is clicking the same vote type again (to undo)
+        _userPostVotes[post.id] = null;
+        if (voteType == 'up') {
+          post.upvotes--;
+        } else { // voteType == 'down'
+          post.downvotes--;
+        }
+      } else { // New vote or changing vote
+        // If there was a previous, different vote, undo its effect first
+        if (currentVote == 'up') post.upvotes--;
+        if (currentVote == 'down') post.downvotes--;
+
+        _userPostVotes[post.id] = voteType; // Set the new vote
+        if (voteType == 'up') {
+          post.upvotes++;
+        } else { // voteType == 'down'
+          post.downvotes++;
+        }
+      }
+      _applyFilters(); // Re-apply filters if sorting by votes, or just to refresh UI
+    });
+     // For real app, this local state update would ideally be driven by a Firebase listener,
+     // or you'd call a function like:
+    // _updateVoteInFirebase(post.id, _currentUser.id, _userPostVotes[post.id], currentVote);
+  }
 
   Widget _buildFilterPanel() {
     return Container(
-      width: 180,
+      width: 180, // Fixed width for the filter panel
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
         border: Border(right: BorderSide(color: Colors.grey.shade300)),
@@ -194,14 +285,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 final filter = _filters[index];
                 return ListTile(
                   title: Text(filter),
-                  selected: _selectedFilter == filter,
                   dense: true,
+                  selected: _selectedFilter == filter,
                   selectedTileColor: Colors.red.withOpacity(0.1),
                   onTap: () {
                     setState(() {
                       _selectedFilter = filter;
                       _applyFilters();
                     });
+                    // If in a drawer, close it
+                    if (Scaffold.of(context).isEndDrawerOpen) {
+                        Navigator.of(context).pop();
+                    }
                   },
                 );
               },
@@ -213,23 +308,40 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildPostItem(BuildContext context, Post post) {
+    final String? userVote = _userPostVotes[post.id];
+
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
       child: InkWell(
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => PostDetailScreen(post: post, currentUser: _currentUser)),
-          ).then((updatedPost) {
-            // If PostDetailScreen returns an updated post (e.g., after a vote), update it here
-            if (updatedPost != null && updatedPost is Post) {
-              setState(() {
-                final index = _allPosts.indexWhere((p) => p.id == updatedPost.id);
-                if (index != -1) {
-                  _allPosts[index] = updatedPost;
-                  _applyFilters();
+            MaterialPageRoute(builder: (context) => PostDetailScreen(
+                post: post,
+                currentUser: _currentUser,
+                initialUserPostVote: userVote, // Pass current vote status for this post
+            )),
+          ).then((resultFromDetailScreen) {
+            // Result could be a map like {'postId': String, 'newUserVote': String?, 'newUpvotes': int, 'newDownvotes': int }
+            if (resultFromDetailScreen != null && resultFromDetailScreen is Map<String, dynamic>) {
+                final String postId = resultFromDetailScreen['postId'];
+                final String? updatedUserVoteForPost = resultFromDetailScreen['newUserVote'];
+                final int newUpvotes = resultFromDetailScreen['newUpvotes'];
+                final int newDownvotes = resultFromDetailScreen['newDownvotes'];
+                // Comments are handled within PostDetailScreen's local state for this demo.
+                // If comments were also passed back and needed updating here, handle that.
+
+                final int postIndex = _allPosts.indexWhere((p) => p.id == postId);
+                if (postIndex != -1) {
+                    setState(() {
+                        _userPostVotes[postId] = updatedUserVoteForPost;
+                        _allPosts[postIndex].upvotes = newUpvotes;
+                        _allPosts[postIndex].downvotes = newDownvotes;
+                        // Note: If PostDetailScreen modified post.comments, we'd need to update _allPosts[postIndex].comments too.
+                        // For this example, we assume PostDetailScreen works on a copy for its internal comment list management.
+                        _applyFilters(); // Re-filter/sort if necessary
+                    });
                 }
-              });
             }
           });
         },
@@ -238,10 +350,7 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                post.title,
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
+              Text(post.title, style: Theme.of(context).textTheme.titleLarge),
               if (post.tags.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 4.0, bottom: 4.0),
@@ -268,53 +377,22 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.question_mark, size: 18),
-                    onPressed: () { /* Handle '?' action */ },
                     tooltip: "Info/Options",
+                    onPressed: () { /* Handle '?' action */ },
                   ),
                   IconButton(
-                    icon: Icon(Icons.arrow_downward, size: 18, color: post.downvotes > 0 ? Colors.blue : Colors.grey),
-                    onPressed: () {
-                      // --- VOTE LIMITING COMMENT ---
-                      // In a real app, you'd check if _currentUser has already downvoted this post.
-                      // This typically involves:
-                      // 1. A subcollection on the 'posts' document in Firebase, e.g., 'userVotes' or 'downvotes'.
-                      // 2. Storing a document with _currentUser.id if they vote.
-                      // 3. If they vote again, you might remove their upvote if it exists, or just disallow the second downvote.
-                      // 4. Update the post's downvote count in Firebase atomically.
-                      // Example:
-                      // if (await hasUserAlreadyVoted(post.id, _currentUser.id, 'downvote')) {
-                      //   removeUserVote(post.id, _currentUser.id, 'downvote');
-                      //   decrementDownvoteCount(post.id);
-                      // } else {
-                      //   if (await hasUserAlreadyVoted(post.id, _currentUser.id, 'upvote')) {
-                      //      removeUserVote(post.id, _currentUser.id, 'upvote');
-                      //      decrementUpvoteCount(post.id);
-                      //   }
-                      //   addUserVote(post.id, _currentUser.id, 'downvote');
-                      //   incrementDownvoteCount(post.id);
-                      // }
-                      setState(() {
-                        post.downvotes++;
-                        _applyFilters();
-                      });
-                    },
-                     tooltip: "Downvote (${post.downvotes})",
+                    icon: Icon(Icons.arrow_downward, size: 18,
+                        color: userVote == 'down' ? Colors.blue : Colors.grey), // Reflect user's vote
+                    tooltip: "Downvote (${post.downvotes})",
+                    onPressed: () => _handlePostVote(post, 'down'),
                   ),
                   Text("${post.downvotes}", style: const TextStyle(fontSize: 12)),
                   const SizedBox(width: 8),
                   IconButton(
-                    icon: Icon(Icons.arrow_upward, size: 18, color: post.upvotes > 0 ? Colors.red : Colors.grey),
-                    onPressed: () {
-                      // --- VOTE LIMITING COMMENT (similar to downvote) ---
-                      // Check if _currentUser has already upvoted.
-                      // Manage removing downvote if it exists.
-                      // Update upvote count in Firebase.
-                      setState(() {
-                        post.upvotes++;
-                        _applyFilters();
-                      });
-                    },
+                    icon: Icon(Icons.arrow_upward, size: 18,
+                        color: userVote == 'up' ? Colors.red : Colors.grey), // Reflect user's vote
                     tooltip: "Upvote (${post.upvotes})",
+                    onPressed: () => _handlePostVote(post, 'up'),
                   ),
                   Text("${post.upvotes}", style: const TextStyle(fontSize: 12)),
                   const Spacer(),
@@ -332,7 +410,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    bool isWideScreen = MediaQuery.of(context).size.width > 700; // Adjusted for better layout
+    bool isWideScreen = MediaQuery.of(context).size.width > 700;
 
     return Scaffold(
       appBar: AppBar(
@@ -344,12 +422,12 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: _showCreatePostDialog,
           ),
           if (!isWideScreen)
-            Builder( // Use Builder to get context for Scaffold.of
+            Builder( // Use Builder to get context for Scaffold.of for the drawer
               builder: (context) => IconButton(
                 icon: const Icon(Icons.filter_list),
                 tooltip: "Filters",
                 onPressed: () {
-                  Scaffold.of(context).openEndDrawer();
+                  Scaffold.of(context).openEndDrawer(); // Open drawer for filters
                 },
               ),
             ),
