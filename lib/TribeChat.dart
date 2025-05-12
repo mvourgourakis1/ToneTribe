@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'models/message.dart';
 import 'services/chat_service.dart';
 import 'services/auth_service.dart';
+import 'services/channel_service.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
@@ -17,13 +18,152 @@ class _MyHomePageState extends State<MyHomePage> {
   final ScrollController _scrollController = ScrollController();
   final ChatService _chatService = ChatService();
   final AuthService _authService = AuthService();
+  final ChannelService _channelService = ChannelService();
   Message? _replyingTo;
   int? _hoveredMessageIndex;
   String _currentChannelId = 'general'; // Default channel
+  final TextEditingController _newChannelNameController = TextEditingController();
+  final TextEditingController _newChannelDescriptionController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+  }
+
+  void _createNewChannel() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Create New Channel'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _newChannelNameController,
+              decoration: const InputDecoration(
+                labelText: 'Channel Name',
+                hintText: 'Enter channel name',
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _newChannelDescriptionController,
+              decoration: const InputDecoration(
+                labelText: 'Description',
+                hintText: 'Enter channel description',
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              if (_newChannelNameController.text.isNotEmpty) {
+                try {
+                  final channelRef = await _channelService.createChannel(
+                    _newChannelNameController.text,
+                    _newChannelDescriptionController.text,
+                  );
+                  setState(() {
+                    _currentChannelId = channelRef.id;
+                  });
+                  _newChannelNameController.clear();
+                  _newChannelDescriptionController.clear();
+                  Navigator.pop(context);
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error creating channel: $e')),
+                  );
+                }
+              }
+            },
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _joinChannel() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Join Channel'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: StreamBuilder(
+            stream: _channelService.getUserChannels(),
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return Text('Error: ${snapshot.error}');
+              }
+
+              if (!snapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              final channels = snapshot.data!.docs;
+
+              if (channels.isEmpty) {
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('No channels available'),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _createNewChannel();
+                      },
+                      child: const Text('Create New Channel'),
+                    ),
+                  ],
+                );
+              }
+
+              return ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 300),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: channels.map((channel) {
+                      return ListTile(
+                        title: Text(channel['name'] ?? 'Unnamed Channel'),
+                        subtitle: Text(channel['description'] ?? 'No description'),
+                        onTap: () async {
+                          try {
+                            await _channelService.joinChannel(channel.id);
+                            setState(() {
+                              _currentChannelId = channel.id;
+                            });
+                            Navigator.pop(context);
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error joining channel: $e')),
+                            );
+                          }
+                        },
+                      );
+                    }).toList(),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _sendMessage() {
@@ -102,6 +242,16 @@ class _MyHomePageState extends State<MyHomePage> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text(widget.title),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: _createNewChannel,
+            tooltip: 'Create Channel',
+          ),
+          IconButton(
+            icon: const Icon(Icons.group_add),
+            onPressed: _joinChannel,
+            tooltip: 'Join Channel',
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () => _authService.signOut(),

@@ -38,7 +38,7 @@ class ChannelService {
 
     return _firestore
         .collection('channels')
-        .where('members', arrayContains: user.uid)
+        .where('createdAt', isNull: false)  // This ensures we get all channels
         .snapshots();
   }
 
