@@ -45,21 +45,23 @@ class Comment {
   final String postId;
   final String? parentCommentId;
   final String author; // Could be a User object
-  final String text;
+  final String content; // Changed from text to content
   final DateTime timestamp;
   int upvotes;
   int downvotes;
-  List<Comment> replies; // Made mutable for easier local updates in demo
+  String? userVote; // Added userVote field
+  final List<Comment> replies;
 
   Comment({
     required this.id,
     required this.postId,
     this.parentCommentId,
     required this.author,
-    required this.text,
+    required this.content, // Changed from text to content
     required this.timestamp,
     this.upvotes = 0,
     this.downvotes = 0,
+    this.userVote, // Added userVote parameter
     List<Comment>? replies,
   }) : replies = replies ?? [];
 }
@@ -80,7 +82,7 @@ List<Post> samplePosts = [
         id: 'c1',
         postId: '1',
         author: 'RockLover',
-        text: 'Absolutely iconic! The vocal harmonies are insane.',
+        content: 'Absolutely iconic! The vocal harmonies are insane.',
         timestamp: DateTime.now().subtract(const Duration(hours: 1)),
         upvotes: 15,
         replies: [
@@ -89,7 +91,7 @@ List<Post> samplePosts = [
             postId: '1',
             parentCommentId: 'c1',
             author: 'GuitarHero',
-            text: 'And Brian May\'s solo... legendary!',
+            content: 'And Brian May\'s solo... legendary!',
             timestamp: DateTime.now().subtract(const Duration(minutes: 30)),
             upvotes: 8,
           ),
@@ -99,7 +101,7 @@ List<Post> samplePosts = [
         id: 'c2',
         postId: '1',
         author: 'Newbie',
-        text: 'Just heard this for the first time. Mind blown!',
+        content: 'Just heard this for the first time. Mind blown!',
         timestamp: DateTime.now().subtract(const Duration(minutes: 45)),
         upvotes: 5,
       ),
@@ -119,7 +121,7 @@ List<Post> samplePosts = [
         id: 'c3',
         postId: '2',
         author: 'Music Critic',
-        text: 'A classic for a reason. The lyrics are so poetic.',
+        content: 'A classic for a reason. The lyrics are so poetic.',
         timestamp: DateTime.now().subtract(const Duration(hours: 20)),
         upvotes: 10,
       ),

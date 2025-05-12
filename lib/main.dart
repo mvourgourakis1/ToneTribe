@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:tonetribe/screens/home_screen.dart';
+import 'screens/home_screen.dart';
 import 'firebase_options.dart';
-import 'TribeChat.dart';
 import 'services/auth_service.dart';
 
 void main() async {
@@ -20,7 +19,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'ToneTribe Chat',
+      title: 'ToneTribe',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
@@ -33,14 +32,12 @@ class MyApp extends StatelessWidget {
           }
 
           if (snapshot.hasData) {
-            return const MyHomePage(title: 'ToneTribe Chat');
+            return const HomeScreen();
           }
 
           return const LoginPage();
         },
       ),
-      // home: const HomeScreen(),
-
     );
   }
 }
@@ -139,7 +136,7 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isRegistering ? 'ToneTribe Chat - Register' : 'ToneTribe Chat - Login'),
+        title: Text(_isRegistering ? 'ToneTribe - Register' : 'ToneTribe - Login'),
       ),
       body: SingleChildScrollView(
         child: Padding(
