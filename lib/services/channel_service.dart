@@ -138,4 +138,19 @@ class ChannelService {
 
     return moderatorDoc.exists;
   }
+
+  // Get channel by name
+  Future<DocumentSnapshot?> getChannelByName(String name) async {
+    final querySnapshot = await _firestore
+        .collection('channels')
+        .where('name', isEqualTo: name)
+        .limit(1)
+        .get();
+
+    if (querySnapshot.docs.isEmpty) {
+      return null;
+    }
+
+    return querySnapshot.docs.first;
+  }
 } 

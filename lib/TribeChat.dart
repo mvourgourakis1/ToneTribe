@@ -28,6 +28,31 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     super.initState();
+    _initializeGeneralChannel();
+  }
+
+  Future<void> _initializeGeneralChannel() async {
+    try {
+      // Check if general channel exists
+      final generalChannelQuery = await _channelService.getChannelByName('general');
+      if (generalChannelQuery == null) {
+        // Create general channel if it doesn't exist
+        final channelRef = await _channelService.createChannel(
+          'general',
+          'The main channel for all users',
+        );
+        setState(() {
+          _currentChannelId = channelRef.id;
+        });
+      } else {
+        setState(() {
+          _currentChannelId = generalChannelQuery.id;
+        });
+      }
+    } catch (e) {
+      // Handle any errors silently - the default 'general' ID will be used
+      print('Error initializing general channel: $e');
+    }
   }
 
   void _createNewChannel() {
