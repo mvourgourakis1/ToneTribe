@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
-import '../data_models.dart';
+import '../data_models.dart' show User, Post, Comment;
 import 'post_detail_screen.dart';
+import '../services/forum_service.dart';
+import '../services/auth_service.dart';
+import 'package:firebase_auth/firebase_auth.dart' hide User;
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ForumScreen extends StatefulWidget {
   const ForumScreen({super.key});
@@ -10,8 +14,8 @@ class ForumScreen extends StatefulWidget {
 }
 
 class _ForumScreenState extends State<ForumScreen> {
-  List<Post> _allPosts = [];
-  List<Post> _filteredPosts = [];
+  final ForumService _forumService = ForumService();
+  final AuthService _authService = AuthService();
   String _searchQuery = '';
   String? _selectedFilter;
 
@@ -19,77 +23,21 @@ class _ForumScreenState extends State<ForumScreen> {
     "All", "Rock", "Pop", "Classic Rock", "Most Upvoted", "Newest"
   ];
 
-  // Get the current user (dummy data for now)
-  final User _currentUser = sampleCurrentUser;
-
-  // --- LOCAL VOTE TRACKING (SIMULATION) ---
-  // In a real Firebase app, this information would be fetched alongside posts
-  // or derived from a separate 'userVotes' collection.
-  // Key: postId, Value: 'up' or 'down' or null if no vote
-  final Map<String, String?> _userPostVotes = {};
-
-  @override
-  void initState() {
-    super.initState();
-    // For now, using sample data:
-    _allPosts = List.from(samplePosts); // Make a mutable copy
-    for (var post in _allPosts) { // Initialize vote status (simulating no prior votes)
-      _userPostVotes[post.id] = null;
-    }
-    _applyFilters();
-  }
-
-  void _applyFilters() {
-    setState(() {
-      _filteredPosts = _allPosts.where((post) {
-        final matchesSearch = post.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                            post.content.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                            post.tags.any((tag) => tag.toLowerCase().contains(_searchQuery.toLowerCase()));
-        
-        bool matchesFilter = true;
-        if (_selectedFilter != null && _selectedFilter != "All") {
-          // Check if the selected filter is one of the special sort types
-          if (_selectedFilter == "Most Upvoted" || _selectedFilter == "Newest") {
-            matchesFilter = true; // Sorting is handled separately
-          } else {
-            // Assume other filters are tags
-            matchesFilter = post.tags.any((tag) => tag.toLowerCase() == _selectedFilter!.toLowerCase());
-          }
-        }
-        return matchesSearch && matchesFilter;
-      }).toList();
-
-      // Sorting based on filter
-      if (_selectedFilter == "Most Upvoted") {
-        _filteredPosts.sort((a, b) => b.upvotes.compareTo(a.upvotes));
-      } else if (_selectedFilter == "Newest") {
-        _filteredPosts.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-      } else {
-        // Default sort (e.g., by newest) if no specific sort filter is active
-        // or if a tag filter is active, still sort by newest within that tag.
-        _filteredPosts.sort((a,b) => b.timestamp.compareTo(a.timestamp));
+  void _handleCreateNewPost(String title, String content, List<String> tags) async {
+    try {
+      await _forumService.createPost(title, content, tags);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Post created successfully')),
+        );
       }
-    });
-  }
-
-  void _handleCreateNewPost(String title, String content, List<String> tags) {
-    // For demo, add locally:
-    final newPost = Post(
-      id: DateTime.now().millisecondsSinceEpoch.toString(), // Use a more robust ID in real app
-      title: title,
-      content: content,
-      author: _currentUser.username,
-      timestamp: DateTime.now(),
-      tags: tags,
-    );
-    setState(() {
-      _allPosts.insert(0, newPost); // Add to the beginning
-      _userPostVotes[newPost.id] = null; // Initialize vote status for the new post
-      _applyFilters(); // Re-apply filters to show the new post
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Created Post: "$title" by ${_currentUser.username}')),
-    );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error creating post: ${e.toString()}')),
+        );
+      }
+    }
   }
 
   void _showCreatePostDialog() {
@@ -136,38 +84,9 @@ class _ForumScreenState extends State<ForumScreen> {
     );
   }
 
-  // --- VOTING LOGIC FOR POSTS ---
-  void _handlePostVote(Post post, String voteType) { // voteType: 'up' or 'down'
-    setState(() {
-      final currentVote = _userPostVotes[post.id];
-
-      // Local simulation:
-      if (currentVote == voteType) { // User is clicking the same vote type again (to undo)
-        _userPostVotes[post.id] = null;
-        if (voteType == 'up') {
-          post.upvotes--;
-        } else { // voteType == 'down'
-          post.downvotes--;
-        }
-      } else { // New vote or changing vote
-        // If there was a previous, different vote, undo its effect first
-        if (currentVote == 'up') post.upvotes--;
-        if (currentVote == 'down') post.downvotes--;
-
-        _userPostVotes[post.id] = voteType; // Set the new vote
-        if (voteType == 'up') {
-          post.upvotes++;
-        } else { // voteType == 'down'
-          post.downvotes++;
-        }
-      }
-      _applyFilters(); // Re-apply filters if sorting by votes, or just to refresh UI
-    });
-  }
-
   Widget _buildFilterPanel() {
     return Container(
-      width: 180, // Fixed width for the filter panel
+      width: 180,
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
         border: Border(right: BorderSide(color: Colors.grey.shade300)),
@@ -190,9 +109,7 @@ class _ForumScreenState extends State<ForumScreen> {
                   onTap: () {
                     setState(() {
                       _selectedFilter = filter;
-                      _applyFilters();
                     });
-                    // If in a drawer, close it
                     if (Scaffold.of(context).isEndDrawerOpen) {
                       Navigator.of(context).pop();
                     }
@@ -207,8 +124,6 @@ class _ForumScreenState extends State<ForumScreen> {
   }
 
   Widget _buildPostItem(BuildContext context, Post post) {
-    final String? userVote = _userPostVotes[post.id];
-
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
       child: InkWell(
@@ -217,26 +132,18 @@ class _ForumScreenState extends State<ForumScreen> {
             context,
             MaterialPageRoute(builder: (context) => PostDetailScreen(
               post: post,
-              currentUser: _currentUser,
-              initialUserPostVote: userVote, // Pass current vote status for this post
+              currentUser: User(
+                id: _authService.currentUser!.uid,
+                username: _authService.currentUser!.displayName ?? 'Anonymous',
+              ),
             )),
-          ).then((resultFromDetailScreen) {
-            // Result could be a map like {'postId': String, 'newUserVote': String?, 'newUpvotes': int, 'newDownvotes': int }
-            if (resultFromDetailScreen != null && resultFromDetailScreen is Map<String, dynamic>) {
-              final String postId = resultFromDetailScreen['postId'];
-              final String? updatedUserVoteForPost = resultFromDetailScreen['newUserVote'];
-              final int newUpvotes = resultFromDetailScreen['newUpvotes'];
-              final int newDownvotes = resultFromDetailScreen['newDownvotes'];
-
-              final int postIndex = _allPosts.indexWhere((p) => p.id == postId);
-              if (postIndex != -1) {
-                setState(() {
-                  _userPostVotes[postId] = updatedUserVoteForPost;
-                  _allPosts[postIndex].upvotes = newUpvotes;
-                  _allPosts[postIndex].downvotes = newDownvotes;
-                  _applyFilters(); // Re-filter/sort if necessary
-                });
-              }
+          ).then((result) {
+            if (result != null) {
+              // Update the post's votes in the list
+              setState(() {
+                post.upvotes = result['newUpvotes'];
+                post.downvotes = result['newDownvotes'];
+              });
             }
           });
         },
@@ -275,25 +182,69 @@ class _ForumScreenState extends State<ForumScreen> {
                     tooltip: "Info/Options",
                     onPressed: () { /* Handle '?' action */ },
                   ),
-                  IconButton(
-                    icon: Icon(Icons.arrow_downward, size: 18,
-                        color: userVote == 'down' ? Colors.blue : Colors.grey), // Reflect user's vote
-                    tooltip: "Downvote (${post.downvotes})",
-                    onPressed: () => _handlePostVote(post, 'down'),
+                  StreamBuilder<String?>(
+                    stream: _forumService.getUserPostVote(post.id).asStream(),
+                    builder: (context, snapshot) {
+                      final userVote = snapshot.data;
+                      return Row(
+                        children: [
+                          IconButton(
+                            icon: Icon(Icons.arrow_downward, size: 18,
+                                color: userVote == 'down' ? Colors.blue : Colors.grey),
+                            tooltip: "Downvote (${post.downvotes})",
+                            onPressed: () async {
+                              await _forumService.voteOnPost(post.id, 'down');
+                              // The post's votes will be updated through the stream
+                            },
+                          ),
+                          StreamBuilder<DocumentSnapshot>(
+                            stream: _forumService.firestore.collection('posts').doc(post.id).snapshots(),
+                            builder: (context, snapshot) {
+                              if (!snapshot.hasData) return const Text("0");
+                              final data = snapshot.data!.data() as Map<String, dynamic>?;
+                              return Text("${data?['downvotes'] ?? 0}", style: const TextStyle(fontSize: 12));
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: Icon(Icons.arrow_upward, size: 18,
+                                color: userVote == 'up' ? Colors.red : Colors.grey),
+                            tooltip: "Upvote (${post.upvotes})",
+                            onPressed: () async {
+                              await _forumService.voteOnPost(post.id, 'up');
+                              // The post's votes will be updated through the stream
+                            },
+                          ),
+                          StreamBuilder<DocumentSnapshot>(
+                            stream: _forumService.firestore.collection('posts').doc(post.id).snapshots(),
+                            builder: (context, snapshot) {
+                              if (!snapshot.hasData) return const Text("0");
+                              final data = snapshot.data!.data() as Map<String, dynamic>?;
+                              return Text("${data?['upvotes'] ?? 0}", style: const TextStyle(fontSize: 12));
+                            },
+                          ),
+                        ],
+                      );
+                    },
                   ),
-                  Text("${post.downvotes}", style: const TextStyle(fontSize: 12)),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: Icon(Icons.arrow_upward, size: 18,
-                        color: userVote == 'up' ? Colors.red : Colors.grey), // Reflect user's vote
-                    tooltip: "Upvote (${post.upvotes})",
-                    onPressed: () => _handlePostVote(post, 'up'),
-                  ),
-                  Text("${post.upvotes}", style: const TextStyle(fontSize: 12)),
                   const Spacer(),
-                  const Icon(Icons.comment_outlined, size: 16, color: Colors.grey),
-                  const SizedBox(width: 4),
-                  Text("${post.comments.length}", style: const TextStyle(fontSize: 12)),
+                  StreamBuilder<QuerySnapshot>(
+                    stream: _forumService.firestore
+                        .collection('posts')
+                        .doc(post.id)
+                        .collection('comments')
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData) return const Text("0");
+                      return Row(
+                        children: [
+                          const Icon(Icons.comment_outlined, size: 16, color: Colors.grey),
+                          const SizedBox(width: 4),
+                          Text("${snapshot.data!.docs.length}", style: const TextStyle(fontSize: 12)),
+                        ],
+                      );
+                    },
+                  ),
                 ],
               )
             ],
@@ -317,18 +268,18 @@ class _ForumScreenState extends State<ForumScreen> {
             onPressed: _showCreatePostDialog,
           ),
           if (!isWideScreen)
-            Builder( // Use Builder to get context for Scaffold.of for the drawer
+            Builder(
               builder: (context) => IconButton(
                 icon: const Icon(Icons.filter_list),
                 tooltip: "Filters",
                 onPressed: () {
-                  Scaffold.of(context).openEndDrawer(); // Open drawer for filters
+                  Scaffold.of(context).openEndDrawer();
                 },
               ),
             ),
         ],
       ),
-      endDrawer: !isWideScreen ? Drawer(child: _buildFilterPanel()) : null, // Use endDrawer for filters on mobile
+      endDrawer: !isWideScreen ? Drawer(child: _buildFilterPanel()) : null,
       body: Column(
         children: [
           Padding(
@@ -342,8 +293,9 @@ class _ForumScreenState extends State<ForumScreen> {
                 ),
               ),
               onChanged: (value) {
-                _searchQuery = value;
-                _applyFilters();
+                setState(() {
+                  _searchQuery = value;
+                });
               },
             ),
           ),
@@ -353,8 +305,43 @@ class _ForumScreenState extends State<ForumScreen> {
               children: [
                 if (isWideScreen) _buildFilterPanel(),
                 Expanded(
-                  child: _filteredPosts.isEmpty
-                      ? Center(
+                  child: StreamBuilder<List<Post>>(
+                    stream: _forumService.getPosts(),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasError) {
+                        return Center(child: Text('Error: ${snapshot.error}'));
+                      }
+
+                      if (!snapshot.hasData) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+
+                      var posts = snapshot.data!;
+
+                      // Apply search filter
+                      if (_searchQuery.isNotEmpty) {
+                        posts = posts.where((post) {
+                          return post.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                                 post.content.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                                 post.tags.any((tag) => tag.toLowerCase().contains(_searchQuery.toLowerCase()));
+                        }).toList();
+                      }
+
+                      // Apply tag filter
+                      if (_selectedFilter != null && _selectedFilter != "All") {
+                        if (_selectedFilter == "Most Upvoted") {
+                          posts.sort((a, b) => b.upvotes.compareTo(a.upvotes));
+                        } else if (_selectedFilter == "Newest") {
+                          posts.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+                        } else {
+                          posts = posts.where((post) =>
+                            post.tags.any((tag) => tag.toLowerCase() == _selectedFilter!.toLowerCase())
+                          ).toList();
+                        }
+                      }
+
+                      if (posts.isEmpty) {
+                        return Center(
                           child: Text(
                             _searchQuery.isNotEmpty || (_selectedFilter != null && _selectedFilter != "All")
                                 ? 'No posts found matching your criteria.'
@@ -362,13 +349,17 @@ class _ForumScreenState extends State<ForumScreen> {
                             style: Theme.of(context).textTheme.titleMedium,
                             textAlign: TextAlign.center,
                           ),
-                        )
-                      : ListView.builder(
-                          itemCount: _filteredPosts.length,
-                          itemBuilder: (context, index) {
-                            return _buildPostItem(context, _filteredPosts[index]);
-                          },
-                        ),
+                        );
+                      }
+
+                      return ListView.builder(
+                        itemCount: posts.length,
+                        itemBuilder: (context, index) {
+                          return _buildPostItem(context, posts[index]);
+                        },
+                      );
+                    },
+                  ),
                 ),
               ],
             ),
