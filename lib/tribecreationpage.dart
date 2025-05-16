@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart';
+// Remove redundant Firebase import
 import 'firebase_options.dart';
 
 class CreateMusicTribePage extends StatefulWidget {
+  const CreateMusicTribePage({super.key});
+
   @override
   _CreateMusicTribePageState createState() => _CreateMusicTribePageState();
 }
@@ -35,6 +36,8 @@ class _CreateMusicTribePageState extends State<CreateMusicTribePage> {
   ];
 
   late final FirebaseFirestore _firestore;
+  // Replace with actual user ID, e.g., FirebaseAuth.instance.currentUser?.uid
+  final String _currentUserId = 'user123'; // Placeholder for testing
 
   @override
   void initState() {
@@ -59,7 +62,9 @@ class _CreateMusicTribePageState extends State<CreateMusicTribePage> {
         'genres': _selectedGenres,
         'privacy': _selectedPrivacy,
         'createdAt': FieldValue.serverTimestamp(),
+        'members': [_currentUserId], // Add creator as initial member
       });
+      print('Tribe created with creator: $_currentUserId'); // Debug log
     } catch (e) {
       print('Error saving to Firestore: $e');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -72,10 +77,10 @@ class _CreateMusicTribePageState extends State<CreateMusicTribePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Create a Music Tribe'),
+        title: const Text('Create a Music Tribe'),
       ),
       body: SingleChildScrollView(
-        padding: EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,
           child: Column(
@@ -83,7 +88,7 @@ class _CreateMusicTribePageState extends State<CreateMusicTribePage> {
             children: <Widget>[
               TextFormField(
                 controller: _tribeNameController,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Tribe Name',
                   border: OutlineInputBorder(),
                 ),
@@ -94,11 +99,11 @@ class _CreateMusicTribePageState extends State<CreateMusicTribePage> {
                   return null;
                 },
               ),
-              SizedBox(height: 20.0),
+              const SizedBox(height: 20.0),
               TextFormField(
                 controller: _descriptionController,
                 maxLines: 3,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Brief Description',
                   border: OutlineInputBorder(),
                 ),
@@ -109,17 +114,17 @@ class _CreateMusicTribePageState extends State<CreateMusicTribePage> {
                   return null;
                 },
               ),
-              SizedBox(height: 20.0),
+              const SizedBox(height: 20.0),
               TextFormField(
                 controller: _musicFocusController,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   labelText: 'Specific Music Focus (Optional)',
                   hintText: 'e.g., 90s Grunge, Progressive Metal, Lo-fi Hip Hop',
                   border: OutlineInputBorder(),
                 ),
               ),
-              SizedBox(height: 20.0),
-              Text('Genres:', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 20.0),
+              Text('Genres:', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
               Wrap(
                 spacing: 8.0,
                 children: _availableGenres.map((genre) {
@@ -138,8 +143,8 @@ class _CreateMusicTribePageState extends State<CreateMusicTribePage> {
                   );
                 }).toList(),
               ),
-              SizedBox(height: 20.0),
-              Text('Privacy:', style: TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 20.0),
+              Text('Privacy:', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
               RadioListTile<String>(
                 title: const Text('Public'),
                 value: 'public',
@@ -161,39 +166,41 @@ class _CreateMusicTribePageState extends State<CreateMusicTribePage> {
                 },
               ),
               if (_selectedPrivacy == null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8.0),
+                const Padding(
+                  padding: EdgeInsets.only(top: 8.0),
                   child: Text(
                     'Please select the privacy setting',
                     style: TextStyle(color: Colors.red),
                   ),
                 ),
-              SizedBox(height: 30.0),
+              const SizedBox(height: 30.0),
               ElevatedButton(
                 onPressed: () async {
                   if (_formKey.currentState!.validate() && _selectedPrivacy != null) {
                     await _saveTribeToFirestore();
-                    showDialog(
-                      context: context,
-                      builder: (BuildContext context) {
-                        return AlertDialog(
-                          title: Text('Music Tribe Created!'),
-                          content: Text('Your music tribe "${_tribeNameController.text}" has been created.'),
-                          actions: <Widget>[
-                            TextButton(
-                              onPressed: () {
-                                Navigator.of(context).pop();
-                                Navigator.of(context).pop();
-                              },
-                              child: Text('OK'),
-                            ),
-                          ],
-                        );
-                      },
-                    );
+                    if (mounted) {
+                      showDialog(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            title: const Text('Music Tribe Created!'),
+                            content: Text('Your music tribe "${_tribeNameController.text}" has been created.'),
+                            actions: <Widget>[
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                  Navigator.of(context).pop();
+                                },
+                                child: const Text('OK'),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    }
                   }
                 },
-                child: Text('Create Music Tribe'),
+                child: const Text('Create Music Tribe'),
               ),
             ],
           ),
