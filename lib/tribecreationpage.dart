@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
 class CreateMusicTribePage extends StatefulWidget {
   @override
@@ -28,8 +32,41 @@ class _CreateMusicTribePageState extends State<CreateMusicTribePage> {
     'Punk',
     'R&B',
     'Soul',
-    // Add more music genres as needed
   ];
+
+  late final FirebaseFirestore _firestore;
+
+  @override
+  void initState() {
+    super.initState();
+    _firestore = FirebaseFirestore.instance;
+  }
+
+  @override
+  void dispose() {
+    _tribeNameController.dispose();
+    _descriptionController.dispose();
+    _musicFocusController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveTribeToFirestore() async {
+    try {
+      await _firestore.collection('tribes').add({
+        'tribeName': _tribeNameController.text,
+        'description': _descriptionController.text,
+        'musicFocus': _musicFocusController.text,
+        'genres': _selectedGenres,
+        'privacy': _selectedPrivacy,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      print('Error saving to Firestore: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to create tribe: $e')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -133,36 +170,20 @@ class _CreateMusicTribePageState extends State<CreateMusicTribePage> {
                 ),
               SizedBox(height: 30.0),
               ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
                   if (_formKey.currentState!.validate() && _selectedPrivacy != null) {
-                    // Process the form data here
-                    String tribeName = _tribeNameController.text;
-                    String description = _descriptionController.text;
-                    String musicFocus = _musicFocusController.text;
-                    // List<String> selectedGenres = _selectedGenres;
-                    String privacy = _selectedPrivacy!;
-
-                    print('Tribe Name: $tribeName');
-                    print('Description: $description');
-                    print('Specific Music Focus: $musicFocus');
-                    print('Selected Genres: $_selectedGenres');
-                    print('Privacy: $privacy');
-
-                    // You would typically send this data to your backend
-                    // or perform other actions here.
-
-                    // For now, let's show a simple dialog
+                    await _saveTribeToFirestore();
                     showDialog(
                       context: context,
                       builder: (BuildContext context) {
                         return AlertDialog(
                           title: Text('Music Tribe Created!'),
-                          content: Text('Your music tribe "$tribeName" has been created.'),
+                          content: Text('Your music tribe "${_tribeNameController.text}" has been created.'),
                           actions: <Widget>[
                             TextButton(
                               onPressed: () {
-                                Navigator.of(context).pop(); // Close the dialog
-                                Navigator.of(context).pop(); // Go back to the home page
+                                Navigator.of(context).pop();
+                                Navigator.of(context).pop();
                               },
                               child: Text('OK'),
                             ),
@@ -170,8 +191,6 @@ class _CreateMusicTribePageState extends State<CreateMusicTribePage> {
                         );
                       },
                     );
-                  } else if (_selectedPrivacy == null) {
-                    // The validator in the RadioListTile handles the error message
                   }
                 },
                 child: Text('Create Music Tribe'),
