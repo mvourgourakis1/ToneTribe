@@ -5,6 +5,7 @@ import '../data_models.dart';
 import '../TribeChat.dart';
 import 'forum_screen.dart';
 import '../services/auth_service.dart';
+import '../playlist_creation.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -88,6 +89,20 @@ class _HomeScreenState extends State<HomeScreen> {
                         context,
                         MaterialPageRoute(
                           builder: (context) => const ForumScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildFeatureCard(
+                    context,
+                    'Create Playlist',
+                    'Build and share your music playlists',
+                    Icons.playlist_add,
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const PlaylistCreation(),
                         ),
                       );
                     },
