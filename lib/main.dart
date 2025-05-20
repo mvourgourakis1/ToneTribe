@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'screens/home_screen.dart';
+import 'screens/tribe-election-system.dart';
 import 'firebase_options.dart';
 import 'services/auth_service.dart';
 
@@ -32,7 +33,7 @@ class MyApp extends StatelessWidget {
           }
 
           if (snapshot.hasData) {
-            return const HomeScreen();
+            return const TribeLeaderElectionPage();
           }
 
           return const LoginPage();
