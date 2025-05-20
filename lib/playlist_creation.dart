@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:spotify_sdk/spotify_sdk.dart';
 import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 // Song model
 class Song {
@@ -34,6 +35,7 @@ class _PlaylistCreationState extends State<PlaylistCreation> {
   Timer? _debounce;
   bool _isLoading = false;
   String? _error;
+  bool _isConnected = false;
 
   // Common music genres for suggestions
   final List<String> _suggestedGenres = [
@@ -43,10 +45,49 @@ class _PlaylistCreationState extends State<PlaylistCreation> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _connectToSpotify();
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     _debounce?.cancel();
+    SpotifySdk.disconnect();
     super.dispose();
+  }
+
+  Future<void> _connectToSpotify() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+
+      // TODO: Replace with your Spotify client ID and redirect URL
+      await SpotifySdk.connectToSpotifyRemote(
+        clientId: "YOUR_CLIENT_ID",
+        redirectUrl: "YOUR_REDIRECT_URL",
+      );
+
+      // Get access token for API calls
+      final accessToken = await SpotifySdk.getAccessToken(
+        clientId: "YOUR_CLIENT_ID",
+        redirectUrl: "YOUR_REDIRECT_URL",
+        scope: "app-remote-control,user-modify-playback-state,playlist-read-private",
+      );
+
+      setState(() {
+        _isConnected = true;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = 'Failed to connect to Spotify: ${e.toString()}';
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _searchSpotify(String query) async {
@@ -58,45 +99,58 @@ class _PlaylistCreationState extends State<PlaylistCreation> {
       return;
     }
 
+    if (!_isConnected) {
+      setState(() {
+        _error = 'Please connect to Spotify first';
+      });
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _error = null;
     });
 
     try {
-      // TODO: Replace with your Spotify API credentials and proper authentication
-      const String spotifyApiUrl = 'https://api.spotify.com/v1/search';
+      // Get access token
+      final accessToken = await SpotifySdk.getAccessToken(
+        clientId: "YOUR_CLIENT_ID",
+        redirectUrl: "YOUR_REDIRECT_URL",
+        scope: "user-read-private,playlist-read-private",
+      );
+
+      // Search tracks using Spotify Web API
       final response = await http.get(
-        Uri.parse('$spotifyApiUrl?q=$query&type=track&limit=10'),
+        Uri.parse('https://api.spotify.com/v1/search?q=${Uri.encodeComponent(query)}&type=track&limit=10'),
         headers: {
-          'Authorization': 'Bearer YOUR_SPOTIFY_ACCESS_TOKEN',
+          'Authorization': 'Bearer $accessToken',
         },
       );
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final tracks = data['tracks']['items'] as List;
-        
+        final searchResults = json.decode(response.body);
         setState(() {
           _searchResults.clear();
-          for (var track in tracks) {
+          for (var track in searchResults['tracks']['items']) {
             _searchResults.add(Song(
               title: track['name'],
               artist: track['artists'][0]['name'],
               spotifyId: track['id'],
-              thumbnailUrl: track['album']['images'][0]['url'],
+              thumbnailUrl: track['album']['images'].isNotEmpty
+                  ? track['album']['images'][0]['url']
+                  : '',
               genres: [], // Will be populated when added to playlist
             ));
           }
         });
       } else {
         setState(() {
-          _error = 'Failed to search Spotify. Please try again.';
+          _error = 'Failed to search Spotify: ${response.reasonPhrase}';
         });
       }
     } catch (e) {
       setState(() {
-        _error = 'An error occurred. Please check your connection.';
+        _error = 'Failed to search Spotify: ${e.toString()}';
       });
     } finally {
       setState(() {
@@ -224,6 +278,58 @@ class _PlaylistCreationState extends State<PlaylistCreation> {
     );
   }
 
+  Widget _buildConnectionStatus() {
+    if (_isLoading) {
+      return const Padding(
+        padding: EdgeInsets.all(8.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            SizedBox(width: 8),
+            Text('Connecting to Spotify...'),
+          ],
+        ),
+      );
+    }
+
+    if (!_isConnected) {
+      return Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, color: Colors.red),
+            const SizedBox(width: 8),
+            const Text('Not connected to Spotify'),
+            const SizedBox(width: 16),
+            ElevatedButton.icon(
+              onPressed: _connectToSpotify,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.check_circle, color: Colors.green[700]),
+          const SizedBox(width: 8),
+          const Text('Connected to Spotify'),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -232,14 +338,16 @@ class _PlaylistCreationState extends State<PlaylistCreation> {
       ),
       body: Column(
         children: [
+          _buildConnectionStatus(),
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: TextField(
               controller: _searchController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'Search for a song...',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.search),
+                border: const OutlineInputBorder(),
+                enabled: _isConnected, // Disable search if not connected
               ),
               onChanged: _onSearchChanged,
             ),
