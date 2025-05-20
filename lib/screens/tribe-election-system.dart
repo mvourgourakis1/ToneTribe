@@ -31,17 +31,17 @@ class _TribeLeaderElectionPageState extends State<TribeLeaderElectionPage> {
   // Mock data simulating the Election class
   final List<Candidate> candidates = [
     Candidate(
-      user: User(id: 1, name: 'DJ Vibe', contributionScore: 85),
+      user: TribeUser(id: 1, name: 'DJ Vibe', contributionScore: 85),
       vibeStatement: 'Bringing chill lo-fi and upbeat EDM to keep the Tribe grooving!',
       endorsements: 12,
     ),
     Candidate(
-      user: User(id: 2, name: 'Melody Maven', contributionScore: 78),
+      user: TribeUser(id: 2, name: 'Melody Maven', contributionScore: 78),
       vibeStatement: 'Curating soulful R&B and indie pop for a vibey TribeList.',
       endorsements: 9,
     ),
     Candidate(
-      user: User(id: 3, name: 'Bass Boss', contributionScore: 92),
+      user: TribeUser(id: 3, name: 'Bass Boss', contributionScore: 92),
       vibeStatement: 'Heavy basslines and trap beats to energize the Tribe!',
       endorsements: 15,
     ),
@@ -153,16 +153,16 @@ class _TribeLeaderElectionPageState extends State<TribeLeaderElectionPage> {
 }
 
 // Data models
-class User {
+class TribeUser {
   final int id;
   final String name;
   final int contributionScore;
 
-  User({required this.id, required this.name, required this.contributionScore});
+  TribeUser({required this.id, required this.name, required this.contributionScore});
 }
 
 class Candidate {
-  final User user;
+  final TribeUser user;
   final String vibeStatement;
   int endorsements;
 
