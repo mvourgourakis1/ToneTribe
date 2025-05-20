@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'screens/home_screen.dart';
 import 'firebase_options.dart';
 import 'services/auth_service.dart';
+import 'home_page.dart'; // Make sure the path is correct
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,17 +26,18 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       home: StreamBuilder<User?>(
-        stream: AuthService().authStateChanges,
+        stream: FirebaseAuth.instance.authStateChanges(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            );
           }
-
           if (snapshot.hasData) {
-            return const HomeScreen();
+            return const HomePage();
+          } else {
+            return const LoginPage();
           }
-
-          return const LoginPage();
         },
       ),
     );

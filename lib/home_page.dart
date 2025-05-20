@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:tonetribe/models/tribe_model.dart';
-import 'package:tonetribe/tribecreationpage.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'models/tribe_model.dart';
+import 'TribeChat.dart';
+import 'tribecreationpage.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -14,10 +16,18 @@ class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
 
   void _onItemTapped(int index) {
+    if (index == 1) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const MyHomePage(title: 'ToneTribe Chat'),
+        ),
+      );
+      return;
+    }
     setState(() {
       _selectedIndex = index;
     });
-    // Add navigation logic here later
   }
 
   @override
@@ -46,9 +56,15 @@ class _HomePageState extends State<HomePage> {
               // TODO: Implement search functionality
             },
           ),
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.black54),
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut();
+            },
+          ),
         ],
       ),
-      body: Center(child: Text('HomePage loaded')), // TEMP: Debug if HomePage is loading
+      body: _buildBody(),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
@@ -61,9 +77,8 @@ class _HomePageState extends State<HomePage> {
           ),
           BottomNavigationBarItem(
             icon: CircleAvatar(
-              radius: 14, // Slightly larger to match proportions
-              backgroundColor: Colors.grey, // Placeholder color, image shows just an outline
-              // child: Icon(Icons.person_outline, size: 18, color: Colors.white), // Optional: if you want an icon inside
+              radius: 14,
+              backgroundColor: Colors.grey,
             ),
             label: 'Profile',
           ),
@@ -75,22 +90,25 @@ class _HomePageState extends State<HomePage> {
         showUnselectedLabels: false,
         type: BottomNavigationBarType.fixed,
         backgroundColor: Colors.white,
-        elevation: 0, 
+        elevation: 0,
         onTap: _onItemTapped,
       ),
     );
   }
 
   Widget _buildBody() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return const Center(child: Text('Not signed in.'));
+    } 
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      // Assuming your collection is named 'tribes'
-      // TODO: If you need to filter by user, modify this query e.g.:
-      // .where('members', arrayContains: FirebaseAuth.instance.currentUser?.uid)
-      stream: FirebaseFirestore.instance.collection('tribes').snapshots() 
-        as Stream<QuerySnapshot<Map<String, dynamic>>>,
+      stream: FirebaseFirestore.instance
+          .collection('groups')
+          .where('members', arrayContains: user.uid)
+          .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
+          return Center(child: Text('Error: \\${snapshot.error}'));
         }
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -98,47 +116,26 @@ class _HomePageState extends State<HomePage> {
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
           return const Center(child: Text('No tribes found.'));
         }
-
         final tribes = snapshot.data!.docs
             .map((doc) => Tribe.fromFirestore(doc))
             .toList();
-
-        // Separate the HTCS tribe if it exists and needs special handling/pinning
-        // For now, we assume the first tribe in the list might be styled differently or sorted to be first.
-        // The image shows "HTCS" at the top with an image.
-        // Let's assume a field like `isPinned` or a specific ID for HTCS.
-        // For simplicity, I'll use the `imageUrl` to differentiate for now.
-
-        return ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          children: <Widget>[
-            const SizedBox(height: 10),
-            ...tribes.map((tribe) {
-              // Determine if it's the special "HTCS"-like item
-              // This logic might need to be more robust based on your data
-              final bool isSpecialItem = tribe.imageUrl != null && tribe.imageUrl!.isNotEmpty;
-              return Column(
-                children: [
-                  _buildTribeItem(
-                    name: tribe.name,
-                    subtitle: tribe.subtitle ?? ' ', // Ensure subtitle is not null
-                    imageUrl: tribe.imageUrl,
-                    isSpecial: isSpecialItem, 
-                  ),
-                  const Divider(height: 1, color: Colors.grey),
-                ],
-              );
-            }).toList(),
-            const SizedBox(height: 20),
-            const Text(
-              'Friends',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
-            ),
-            const SizedBox(height: 10),
-            // Placeholder for friends list
-            // Text('Friends list will go here...'),
-            const SizedBox(height: 20),
-          ],
+        // Sort pinned tribes to the top
+        tribes.sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0));
+        return ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
+          itemCount: tribes.length,
+          itemBuilder: (context, index) {
+            final tribe = tribes[index];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 16.0),
+              child: _buildTribeItem(
+                name: tribe.tribeName,
+                subtitle: tribe.description ?? '',
+                imageUrl: tribe.groupIcon,
+                isSpecial: tribe.isPinned,
+              ),
+            );
+          },
         );
       },
     );
@@ -150,71 +147,60 @@ class _HomePageState extends State<HomePage> {
     String? imageUrl,
     required bool isSpecial,
   }) {
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 0), // Match image padding
-      title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-      subtitle: Text(subtitle, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-      trailing: isSpecial
-          ? (imageUrl != null && imageUrl.isNotEmpty
-              ? ClipRRect(
-                  borderRadius: BorderRadius.circular(8.0),
-                  child: Image.network(
-                    imageUrl,
-                    width: 48, // Slightly larger image
-                    height: 48,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[200],
-                        borderRadius: BorderRadius.circular(8.0),
-                      ),
-                      child: Icon(Icons.image_not_supported, color: Colors.grey[500]),
-                    ),
-                    loadingBuilder: (BuildContext context, Widget child, ImageChunkEvent? loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[200],
-                          borderRadius: BorderRadius.circular(8.0),
-                        ),
-                        child: Center(
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.0,
-                            value: loadingProgress.expectedTotalBytes != null
-                                ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                                : null,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                )
-              : Container( 
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+        leading: imageUrl != null && imageUrl.isNotEmpty
+            ? ClipRRect(
+                borderRadius: BorderRadius.circular(8.0),
+                child: Image.network(
+                  imageUrl,
                   width: 48,
                   height: 48,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(8.0),
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    width: 48,
+                    height: 48,
+                    color: Colors.grey[200],
+                    child: const Icon(Icons.image_not_supported, color: Colors.grey),
                   ),
-                  child: Icon(Icons.group_work, color: Colors.grey[700]), // Changed icon
-                ))
-          : Container(
-              width: 36, // Adjusted size for the square
-              height: 36,
-              decoration: BoxDecoration(
-                color: Colors.white, // White background for the square
-                border: Border.all(color: Colors.grey.shade400, width: 1.5), // Thicker border
-                borderRadius: BorderRadius.circular(6.0), // Slightly rounded corners
+                ),
+              )
+            : Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(8.0),
+                ),
+                child: const Icon(Icons.group, color: Colors.white),
               ),
-            ),
-      onTap: () {
-        // TODO: Navigate to Tribe details page or handle tap
-        print('Tapped on tribe: $name');
-      },
+        title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        subtitle: Text(subtitle, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+        trailing: Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade400, width: 1.5),
+            borderRadius: BorderRadius.circular(6.0),
+          ),
+        ),
+        onTap: () {
+          // TODO: Navigate to Tribe details page or handle tap
+        },
+      ),
     );
   }
 }
