@@ -1,15 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'screens/home_screen.dart';
 import 'firebase_options.dart';
-import 'services/auth_service.dart';
+import 'tribecreationpage.dart';
+import 'tribesearch.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    print('Firebase initialized successfully'); // Debug log
+  } catch (e) {
+    print('Firebase initialization error: $e'); // Debug log
+  }
   runApp(const MyApp());
 }
 
