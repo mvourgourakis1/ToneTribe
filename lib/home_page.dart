@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:YOUR_APP_NAME/models/tribe_model.dart'; // Placeholder for your app name
+import 'package:tonetribe/models/tribe_model.dart';
+import 'package:tonetribe/tribecreationpage.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -19,8 +20,6 @@ class _HomePageState extends State<HomePage> {
     // Add navigation logic here later
   }
 
-  // TODO: Replace 'YOUR_APP_NAME' in the import above with your actual project name (from pubspec.yaml)
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -33,9 +32,12 @@ class _HomePageState extends State<HomePage> {
         ),
         actions: <Widget>[
           IconButton(
-            icon: const Icon(Icons.grid_view_outlined, color: Colors.black54), // Changed to outlined as per image
+            icon: const Icon(Icons.grid_view_outlined, color: Colors.black54),
             onPressed: () {
-              // TODO: Implement add tribe functionality
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => CreateMusicTribePage()),
+              );
             },
           ),
           IconButton(
@@ -46,7 +48,7 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      body: _buildBody(),
+      body: Center(child: Text('HomePage loaded')), // TEMP: Debug if HomePage is loading
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
