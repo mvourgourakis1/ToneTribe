@@ -5,6 +5,7 @@ import 'models/tribe_model.dart';
 import 'TribeChat.dart';
 import 'tribecreationpage.dart';
 import 'screens/forum_screen.dart';
+import 'tribePage.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -142,12 +143,7 @@ class _HomePageState extends State<HomePage> {
             final tribe = tribes[index];
             return Padding(
               padding: const EdgeInsets.only(bottom: 16.0),
-              child: _buildTribeItem(
-                name: tribe.tribeName,
-                subtitle: tribe.description ?? '',
-                imageUrl: tribe.groupIcon,
-                isSpecial: tribe.isPinned,
-              ),
+              child: _buildTribeItem(tribe),
             );
           },
         );
@@ -155,12 +151,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildTribeItem({
-    required String name,
-    required String subtitle,
-    String? imageUrl,
-    required bool isSpecial,
-  }) {
+  Widget _buildTribeItem(Tribe tribe) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -176,11 +167,11 @@ class _HomePageState extends State<HomePage> {
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
-        leading: imageUrl != null && imageUrl.isNotEmpty
+        leading: tribe.groupIcon != null && tribe.groupIcon!.isNotEmpty
             ? ClipRRect(
                 borderRadius: BorderRadius.circular(8.0),
                 child: Image.network(
-                  imageUrl,
+                  tribe.groupIcon!,
                   width: 48,
                   height: 48,
                   fit: BoxFit.cover,
@@ -201,8 +192,8 @@ class _HomePageState extends State<HomePage> {
                 ),
                 child: const Icon(Icons.group, color: Colors.white),
               ),
-        title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-        subtitle: Text(subtitle, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+        title: Text(tribe.tribeName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        subtitle: Text(tribe.description ?? '', style: const TextStyle(color: Colors.grey, fontSize: 12)),
         trailing: Container(
           width: 32,
           height: 32,
@@ -212,7 +203,10 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         onTap: () {
-          // TODO: Navigate to Tribe details page or handle tap
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => TribePage(tribe: tribe)),
+          );
         },
       ),
     );
