@@ -6,6 +6,7 @@ import 'screens/tribe-election-system.dart';
 import 'firebase_options.dart';
 import 'services/auth_service.dart';
 import 'home_page.dart'; // Make sure the path is correct
+import 'widgets/auth_wrapper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,7 +36,9 @@ class MyApp extends StatelessWidget {
             );
           }
           if (snapshot.hasData) {
-            return const HomePage();
+            return AuthWrapper(
+              child: const HomePage(),
+            );
           } else {
             return const LoginPage();
           }

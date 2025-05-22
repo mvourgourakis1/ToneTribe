@@ -1,16 +1,50 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../widgets/profile_picture.dart';
 import '../widgets/song_thumbnail.dart';
 import '../widgets/playlist_grid_item.dart';
 import '../services/user_service.dart';
-import '../data_models.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
   @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  final _userService = UserService();
+  final _auth = FirebaseAuth.instance;
+  String? _profilePictureUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfilePicture();
+  }
+
+  Future<void> _loadProfilePicture() async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      final url = await _userService.getProfilePictureUrl(user.uid);
+      if (mounted) {
+        setState(() {
+          _profilePictureUrl = url;
+        });
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final user = sampleCurrentUser; // Replace with actual provider later
+    final user = _auth.currentUser;
+    if (user == null) {
+      return const Scaffold(
+        body: Center(
+          child: Text('Not signed in'),
+        ),
+      );
+    }
 
     return Scaffold(
       body: SingleChildScrollView(
@@ -22,18 +56,26 @@ class ProfileScreen extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                ProfilePicture(imageUrl: null), // use Firestore URL later
+                ProfilePicture(imageUrl: _profilePictureUrl),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(user.username,
-                          style: const TextStyle(
-                              fontSize: 24, fontWeight: FontWeight.bold)),
-                      Text(user.id,
-                          style: const TextStyle(
-                              fontSize: 14, color: Colors.grey)),
+                      Text(
+                        user.displayName ?? user.email ?? 'User',
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        user.email ?? '',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -46,17 +88,23 @@ class ProfileScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 24),
-            const Text("Favorite Songs",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            const Text(
+              "Favorite Songs",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: List.generate(
-                  3, (index) => SongThumbnail(isSelected: index == 1)),
+                3,
+                (index) => SongThumbnail(isSelected: index == 1),
+              ),
             ),
             const SizedBox(height: 24),
-            const Text("Your Playlists",
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+            const Text(
+              "Your Playlists",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
             const SizedBox(height: 8),
             GridView.count(
               shrinkWrap: true,
@@ -65,9 +113,13 @@ class ProfileScreen extends StatelessWidget {
               crossAxisSpacing: 8,
               mainAxisSpacing: 8,
               children: List.generate(
-                  4, (index) => PlaylistGridItem(onTap: () {
-                        Navigator.pushNamed(context, '/playlist/$index');
-                      })),
+                4,
+                (index) => PlaylistGridItem(
+                  onTap: () {
+                    Navigator.pushNamed(context, '/playlist/$index');
+                  },
+                ),
+              ),
             ),
           ],
         ),
