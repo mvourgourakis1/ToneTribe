@@ -31,6 +31,12 @@ ToneTribe solves this by centering the experience around Tribes—communities wh
 - **Leadership Voting**: Monthly Tribe-wide votes to select playlist leaders, with an activity leaderboard showcasing engagement.
 - **Archiving**: Users can save favorite TribeList versions for personal use.
 - **Social Features**: Friend connections, taste comparisons, and in-app messaging within Tribes.
+	- when a tribe is created a discord like chat will be created
+
+### Leadership Voting (elaborated)
+At the end of each month, every Tribe initiates a three-day voting window where members elect new playlist leaders. Candidates can self-nominate or be nominated by peers, with each candidate providing a brief “Vibe Statement” describing their music taste, curation goals, and favorite recent tracks. Inside the Tribe Hub, users will see a voting interface with candidate profiles, recent contributions (like songs added, messages sent, and listening activity), and endorsement badges from fellow Tribe members. Each user gets one vote, and voting is anonymous. Participation is encouraged through push notifications and leaderboard incentives, reinforcing a culture of shared ownership and democratic influence.
+
+To reward meaningful engagement while ensuring fairness, votes are lightly weighted based on a user’s recent activity within the Tribe—measured by listening time, playlist interactions, and community participation. However, even low-activity users maintain full voting power to prevent gatekeeping. The top two or three candidates (depending on Tribe size) are granted collaborative editing rights for the TribeList over the next month, with the ability to add, remove, and reorder songs. To encourage rotation and inclusivity, leaders may serve a maximum of two consecutive terms before stepping down for at least one cycle. If no candidates volunteer, the system defaults to a rotation based on recent leaderboard activity, ensuring continuity while preserving community-driven governance.
 
 ### Sketches/Details
 - **Homepage**: Displays user’s Tribes, recommended Tribes via VibeMatch, and friend activity.
@@ -39,6 +45,7 @@ ToneTribe solves this by centering the experience around Tribes—communities wh
 - *(Note: Wireframes can be added to the repo’s `/sketches` folder if required.)*
 
 ### User Flow
+0. **Connection**: User connects ToneTribe to streaming service of choice to be tracked on user profile.
 1. **Onboarding**: User signs up, selects favorite genres, and joins 1–2 official Tribes.
 2. **Exploration**: Browses official Tribes, connects with users, and discovers music via TribeLists.
 3. **Tribe Creation**: After befriending 5+ users, creates a Tribe with a custom vibe and invites others.
@@ -84,3 +91,35 @@ ToneTribe solves this by centering the experience around Tribes—communities wh
 
 ## Next Steps
 ToneTribe aims to redefine music streaming by prioritizing community and creativity. Future iterations could include live events, artist partnerships, or gamified rewards for active Tribes.
+
+### REQUESTING: A non-leader can create requests/suggestions for song additions in any tribe's playlist.
+## Community Engagement
+	DAILY CAP: There should be a daily cap on how many requests someone can make in 1 tribe's playlist (~5/day? --> to avoid clutter/spams for the leader)
+	APPROVAL: You get participation/activity points for every song that's approved
+	REJECTION: No penalties for having your request rejected.
+	FEEDBACK: When the leader either approves or rejects a request, they can send feedback to the requester for (a very small amount of) activity points.
+		- Kind of like Scoir (if you add a college, it asks you why you added it and gives you a bunch of options you can select from + you can select multiple)
+		- MAYBE: small 
+SCOIR'S LAYOUT (this would be what the leader's POV looks like when writing feedback)
+## Profile Customization
+Individual users can list top three favorite songs, change their profile picture, and choose which genres they like. Profiles can also show which tribes users are most active in.
+
+
+
+Connor - Application systems
+What considers activity:
+Listening mins logged
+Hosting listening parties
+Adding to playlists
+    - maybe to limit people from spam adding songs make like a vote? to limit how often someone can add a song
+Commenting during songs (like soundcloud) / engagement to music
+
+Leader Board:
+make sure the tribe leader can only be picked once? unless like 2/3 majority reelects?
+like an option to revote for the tribe leader?
+make sub ranks as well?
+    - managing the songs
+    - creating votes
+
+
+
