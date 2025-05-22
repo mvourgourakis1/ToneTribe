@@ -1,1 +1,52 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"tone-tribe","appId":"1:141856292:android:47f468b47bab490897d2b1","fileOutput":"android/app/google-services.json"}},"ios":{"default":{"projectId":"tone-tribe","appId":"1:141856292:ios:bba8c7c116b4ce2697d2b1","uploadDebugSymbols":false,"fileOutput":"ios/Runner/GoogleService-Info.plist"}},"macos":{"default":{"projectId":"tone-tribe","appId":"1:141856292:ios:bba8c7c116b4ce2697d2b1","uploadDebugSymbols":false,"fileOutput":"macos/Runner/GoogleService-Info.plist"}},"dart":{"lib/firebase_options.dart":{"projectId":"tone-tribe","configurations":{"android":"1:141856292:android:47f468b47bab490897d2b1","ios":"1:141856292:ios:bba8c7c116b4ce2697d2b1","macos":"1:141856292:ios:bba8c7c116b4ce2697d2b1","web":"1:141856292:web:294154a3ddd7c8be97d2b1","windows":"1:141856292:web:f6b32a73b4d1556a97d2b1"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "tone-tribe",
+          "appId": "1:141856292:android:47f468b47bab490897d2b1",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "ios": {
+        "default": {
+          "projectId": "tone-tribe",
+          "appId": "1:141856292:ios:bba8c7c116b4ce2697d2b1",
+          "uploadDebugSymbols": false,
+          "fileOutput": "ios/Runner/GoogleService-Info.plist"
+        }
+      },
+      "macos": {
+        "default": {
+          "projectId": "tone-tribe",
+          "appId": "1:141856292:ios:bba8c7c116b4ce2697d2b1",
+          "uploadDebugSymbols": false,
+          "fileOutput": "macos/Runner/GoogleService-Info.plist"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "tone-tribe",
+          "configurations": {
+            "android": "1:141856292:android:47f468b47bab490897d2b1",
+            "ios": "1:141856292:ios:bba8c7c116b4ce2697d2b1",
+            "macos": "1:141856292:ios:bba8c7c116b4ce2697d2b1",
+            "web": "1:141856292:web:294154a3ddd7c8be97d2b1",
+            "windows": "1:141856292:web:f6b32a73b4d1556a97d2b1"
+          }
+        }
+      }
+    }
+  },
+  "hosting": {
+    "source": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "frameworksBackend": {
+      "region": "us-west1"
+    }
+  }
+}
