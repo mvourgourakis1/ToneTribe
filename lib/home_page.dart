@@ -5,6 +5,8 @@ import 'models/tribe_model.dart';
 import 'TribeChat.dart';
 import 'tribecreationpage.dart';
 import 'screens/forum_screen.dart';
+import 'tribesearch.dart';
+import 'screens/profile_screen.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -31,6 +33,15 @@ class _HomePageState extends State<HomePage> {
         context,
         MaterialPageRoute(
           builder: (context) => const ForumScreen(),
+        ),
+      );
+      return;
+    }
+    if (index == 3) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const ProfileScreen(),
         ),
       );
       return;
@@ -63,7 +74,12 @@ class _HomePageState extends State<HomePage> {
           IconButton(
             icon: const Icon(Icons.search, color: Colors.black54),
             onPressed: () {
-              // TODO: Implement search functionality
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SearchMusicTribePage(),
+                ),
+              );
             },
           ),
           IconButton(
