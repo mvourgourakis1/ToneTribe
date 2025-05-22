@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 // Remove redundant Firebase import
 import 'firebase_options.dart';
 
@@ -55,16 +56,18 @@ class _CreateMusicTribePageState extends State<CreateMusicTribePage> {
 
   Future<void> _saveTribeToFirestore() async {
     try {
-      await _firestore.collection('tribes').add({
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) throw Exception('Not signed in');
+      await _firestore.collection('groups').add({
         'tribeName': _tribeNameController.text,
         'description': _descriptionController.text,
         'musicFocus': _musicFocusController.text,
         'genres': _selectedGenres,
         'privacy': _selectedPrivacy,
         'createdAt': FieldValue.serverTimestamp(),
-        'members': [_currentUserId], // Add creator as initial member
+        'members': [user.uid], // Add creator as initial member
       });
-      print('Tribe created with creator: $_currentUserId'); // Debug log
+      print('Tribe created with creator: \\${user.uid}'); // Debug log
     } catch (e) {
       print('Error saving to Firestore: $e');
       ScaffoldMessenger.of(context).showSnackBar(

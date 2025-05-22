@@ -39,6 +39,18 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('ToneTribe'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.forum),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ForumScreen(),
+                ),
+              );
+            },
+            tooltip: 'Forums',
+          ),
+          IconButton(
             icon: const Icon(Icons.logout),
             onPressed: _signOut,
             tooltip: 'Sign Out',
