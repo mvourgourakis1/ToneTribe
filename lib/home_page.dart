@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'models/tribe_model.dart';
 import 'TribeChat.dart';
 import 'tribecreationpage.dart';
+import 'screens/forum_screen.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -21,6 +22,15 @@ class _HomePageState extends State<HomePage> {
         context,
         MaterialPageRoute(
           builder: (context) => const MyHomePage(title: 'ToneTribe Chat'),
+        ),
+      );
+      return;
+    }
+    if (index == 2) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const ForumScreen(),
         ),
       );
       return;
@@ -74,6 +84,10 @@ class _HomePageState extends State<HomePage> {
           BottomNavigationBarItem(
             icon: Icon(Icons.chat_bubble_outline),
             label: 'Messages',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.forum),
+            label: 'Forums',
           ),
           BottomNavigationBarItem(
             icon: CircleAvatar(

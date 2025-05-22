@@ -32,7 +32,7 @@ class ChatService {
 
     final messageData = {
       'userId': user.uid,
-      'username': user.displayName ?? 'Anonymous',
+      'username': user.displayName ?? user.email ?? 'Anonymous',
       'profileImageUrl': user.photoURL ?? 'https://via.placeholder.com/50',
       'content': content,
       'timestamp': FieldValue.serverTimestamp(),
