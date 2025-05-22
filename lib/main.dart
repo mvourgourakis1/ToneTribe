@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'screens/home_screen.dart';
+import 'screens/tribe-election-system.dart';
 import 'firebase_options.dart';
 import 'services/auth_service.dart';
 import 'home_page.dart'; // Make sure the path is correct
