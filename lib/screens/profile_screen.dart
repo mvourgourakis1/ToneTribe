@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../widgets/profile_picture.dart';
 import '../widgets/song_thumbnail.dart';
 import '../widgets/playlist_grid_item.dart';

@@ -6,6 +6,7 @@ import 'TribeChat.dart';
 import 'tribecreationpage.dart';
 import 'screens/forum_screen.dart';
 import 'tribesearch.dart';
+import 'screens/profile_screen.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -32,6 +33,15 @@ class _HomePageState extends State<HomePage> {
         context,
         MaterialPageRoute(
           builder: (context) => const ForumScreen(),
+        ),
+      );
+      return;
+    }
+    if (index == 3) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const ProfileScreen(),
         ),
       );
       return;

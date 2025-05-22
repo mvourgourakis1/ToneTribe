@@ -1,9 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 
 class UserService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseStorage _storage = FirebaseStorage.instance;
 
   Future<String?> getProfilePictureUrl(String uid) async {
     final doc = await _firestore.collection('users').doc(uid).get();
@@ -16,5 +14,12 @@ class UserService {
     });
   }
 
-  // Implement image upload logic here
+  Future<void> updateUserProfile(String uid, Map<String, dynamic> userData) async {
+    await _firestore.collection('users').doc(uid).update(userData);
+  }
+
+  Future<Map<String, dynamic>?> getUserData(String uid) async {
+    final doc = await _firestore.collection('users').doc(uid).get();
+    return doc.data();
+  }
 }
