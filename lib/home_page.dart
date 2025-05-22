@@ -5,6 +5,7 @@ import 'models/tribe_model.dart';
 import 'TribeChat.dart';
 import 'tribecreationpage.dart';
 import 'screens/forum_screen.dart';
+import 'tribesearch.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -63,7 +64,12 @@ class _HomePageState extends State<HomePage> {
           IconButton(
             icon: const Icon(Icons.search, color: Colors.black54),
             onPressed: () {
-              // TODO: Implement search functionality
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SearchMusicTribePage(),
+                ),
+              );
             },
           ),
           IconButton(
