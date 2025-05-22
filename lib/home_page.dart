@@ -221,7 +221,9 @@ class _HomePageState extends State<HomePage> {
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => TribePage(tribe: tribe)),
+            MaterialPageRoute(
+              builder: (context) => TribePage(tribe: tribe),
+            ),
           );
         },
       ),
