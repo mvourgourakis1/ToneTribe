@@ -7,12 +7,26 @@ import 'firebase_options.dart';
 import 'services/auth_service.dart';
 import 'home_page.dart'; // Make sure the path is correct
 import 'widgets/auth_wrapper.dart';
+import 'services/migration_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  
+  // Check and perform migration if needed
+  final migrationService = MigrationService();
+  final isMigrated = await migrationService.checkMigrationStatus();
+  if (!isMigrated) {
+    try {
+      await migrationService.migrateGroupsToTribes();
+    } catch (e) {
+      print('Migration failed: $e');
+      // Continue app startup even if migration fails
+    }
+  }
+  
   runApp(const MyApp());
 }
 

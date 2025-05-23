@@ -58,7 +58,7 @@ class _CreateMusicTribePageState extends State<CreateMusicTribePage> {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception('Not signed in');
-      await _firestore.collection('groups').add({
+      await _firestore.collection('tribes').add({
         'tribeName': _tribeNameController.text,
         'description': _descriptionController.text,
         'musicFocus': _musicFocusController.text,

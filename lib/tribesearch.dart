@@ -1,83 +1,49 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'models/tribe_model.dart';
 
 class SearchMusicTribePage extends StatefulWidget {
   const SearchMusicTribePage({super.key});
 
   @override
-  _SearchMusicTribePageState createState() => _SearchMusicTribePageState();
+  State<SearchMusicTribePage> createState() => _SearchMusicTribePageState();
 }
 
 class _SearchMusicTribePageState extends State<SearchMusicTribePage> {
-  final _searchController = TextEditingController();
-  List<String> _selectedGenres = [];
-  final List<String> _availableGenres = [
-    'Rock',
-    'Pop',
-    'Hip Hop',
-    'Electronic',
-    'Country',
-    'Jazz',
-    'Classical',
-    'Blues',
-    'Reggae',
-    'Folk',
-    'Indie',
-    'Metal',
-    'Punk',
-    'R&B',
-    'Soul',
-  ];
-  late final FirebaseFirestore _firestore;
+  final TextEditingController _searchController = TextEditingController();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
   String _searchQuery = '';
-  // Replace with actual user ID, e.g., FirebaseAuth.instance.currentUser?.uid
-  final String _currentUserId = 'user123'; // Placeholder for testing
-
-  @override
-  void initState() {
-    super.initState();
-    _firestore = FirebaseFirestore.instance;
-    _searchController.addListener(_onSearchChanged);
-    print('SearchMusicTribePage initialized'); // Debug log
-  }
 
   @override
   void dispose() {
-    _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     super.dispose();
   }
 
-  void _onSearchChanged() {
-    setState(() {
-      _searchQuery = _searchController.text.trim();
-      print('Search query updated: $_searchQuery'); // Debug log
-    });
-  }
-
-  Query<Map<String, dynamic>> _buildQuery() {
-    Query<Map<String, dynamic>> query = _firestore.collection('tribes');
-    if (_selectedGenres.isNotEmpty) {
-      query = query.where('genres', arrayContainsAny: _selectedGenres);
-      print('Genre filter applied: $_selectedGenres'); // Debug log
-    }
-    return query;
-  }
-
   Future<void> _joinTribe(String tribeId, String tribeName, List<String> currentMembers) async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('You must be signed in to join a tribe')),
+      );
+      return;
+    }
+
     try {
-      if (currentMembers.contains(_currentUserId)) {
+      if (currentMembers.contains(user.uid)) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('You are already a member of $tribeName')),
         );
-        print('User $_currentUserId already in tribe $tribeName'); // Debug log
+        print('User ${user.uid} already in tribe $tribeName'); // Debug log
         return;
       }
 
       await _firestore.collection('tribes').doc(tribeId).update({
-        'members': FieldValue.arrayUnion([_currentUserId]),
+        'members': FieldValue.arrayUnion([user.uid]),
       });
-      print('User $_currentUserId joined tribe $tribeName'); // Debug log
+      print('User ${user.uid} joined tribe $tribeName'); // Debug log
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Successfully joined $tribeName!')),
       );
@@ -93,17 +59,7 @@ class _SearchMusicTribePageState extends State<SearchMusicTribePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Search Music Tribes'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              setState(() {});
-              print('Refresh triggered'); // Debug log
-            },
-            tooltip: 'Refresh',
-          ),
-        ],
+        title: const Text('Search Tribes'),
       ),
       body: Column(
         children: [
@@ -111,135 +67,89 @@ class _SearchMusicTribePageState extends State<SearchMusicTribePage> {
             padding: const EdgeInsets.all(16.0),
             child: TextField(
               controller: _searchController,
-              decoration: const InputDecoration(
-                labelText: 'Search by Tribe Name',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.search),
+              decoration: InputDecoration(
+                hintText: 'Search tribes...',
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          setState(() {
+                            _searchController.clear();
+                            _searchQuery = '';
+                          });
+                        },
+                      )
+                    : null,
               ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Filter by Genres:',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0),
-            child: Wrap(
-              spacing: 8.0,
-              children: _availableGenres.map((genre) {
-                return FilterChip(
-                  label: Text(genre),
-                  selected: _selectedGenres.contains(genre),
-                  onSelected: (bool selected) {
-                    setState(() {
-                      if (selected) {
-                        _selectedGenres.add(genre);
-                      } else {
-                        _selectedGenres.remove(genre);
-                      }
-                    });
-                  },
-                );
-              }).toList(),
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value;
+                });
+              },
             ),
           ),
           Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: _buildQuery().snapshots(),
+            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+              stream: _searchQuery.isEmpty
+                  ? _firestore.collection('tribes').snapshots()
+                  : _firestore
+                      .collection('tribes')
+                      .where('tribeName', isGreaterThanOrEqualTo: _searchQuery)
+                      .where('tribeName',
+                          isLessThanOrEqualTo: '${_searchQuery}z')
+                      .snapshots(),
               builder: (context, snapshot) {
-                print('StreamBuilder state: ${snapshot.connectionState}'); // Debug log
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  print('Loading tribes...'); // Debug log
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
+
+                if (!snapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                if (snapshot.hasError) {
-                  print('Firestore error: ${snapshot.error}'); // Debug log
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text('Error loading tribes. Please try again.'),
-                        const SizedBox(height: 8),
-                        Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.red)),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: () => setState(() {}),
-                          child: const Text('Retry'),
-                        ),
-                      ],
-                    ),
+                final tribes = snapshot.data!.docs
+                    .map((doc) => Tribe.fromFirestore(doc))
+                    .toList();
+
+                if (tribes.isEmpty) {
+                  return const Center(
+                    child: Text('No tribes found. Try a different search term.'),
                   );
                 }
 
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  print('No tribes found in Firestore'); // Debug log
-                  return const Center(child: Text('No tribes found. Try creating one!'));
-                }
-
-                final tribes = snapshot.data!.docs.where((doc) {
-                  final data = doc.data() as Map<String, dynamic>;
-                  final tribeName = data['tribeName']?.toString().toLowerCase() ?? '';
-                  print('Checking tribe: $tribeName'); // Debug log
-                  return _searchQuery.isEmpty || tribeName.contains(_searchQuery.toLowerCase());
-                }).toList();
-
-                print('Filtered tribes count: ${tribes.length}'); // Debug log
-
-                if (tribes.isEmpty) {
-                  return const Center(child: Text('No tribes match your search or filters.'));
-                }
-
                 return ListView.builder(
-                  padding: const EdgeInsets.all(16.0),
                   itemCount: tribes.length,
                   itemBuilder: (context, index) {
-                    final doc = tribes[index];
-                    final data = doc.data() as Map<String, dynamic>;
-                    final tribeId = doc.id;
-                    final tribeName = data['tribeName'] ?? 'Unnamed Tribe';
-                    final description = data['description'] ?? 'No description';
-                    final musicFocus = data['musicFocus'] ?? 'Not specified';
-                    final genres = List<String>.from(data['genres'] ?? []);
-                    final privacy = data['privacy'] ?? 'Unknown';
-                    final members = List<String>.from(data['members'] ?? []);
-
+                    final tribe = tribes[index];
                     return Card(
-                      margin: const EdgeInsets.symmetric(vertical: 8.0),
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       child: ListTile(
-                        title: Text(
-                          tribeName,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        leading: tribe.groupIcon != null &&
+                                tribe.groupIcon!.isNotEmpty
+                            ? CircleAvatar(
+                                backgroundImage:
+                                    NetworkImage(tribe.groupIcon!),
+                              )
+                            : const CircleAvatar(
+                                child: Icon(Icons.group),
+                              ),
+                        title: Text(tribe.tribeName),
+                        subtitle: Text(tribe.description ?? ''),
+                        trailing: ElevatedButton(
+                          onPressed: () => _joinTribe(
+                            tribe.id,
+                            tribe.tribeName,
+                            tribe.members ?? [],
+                          ),
+                          child: const Text('Join'),
                         ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(description),
-                            const SizedBox(height: 4.0),
-                            Text('Focus: $musicFocus'),
-                            const SizedBox(height: 4.0),
-                            Text('Genres: ${genres.isEmpty ? "None" : genres.join(", ")}'),
-                            const SizedBox(height: 4.0),
-                            Text('Privacy: $privacy'),
-                            const SizedBox(height: 4.0),
-                            Text('Members: ${members.length}'),
-                            const SizedBox(height: 8.0),
-                            ElevatedButton(
-                              onPressed: () => _joinTribe(tribeId, tribeName, members),
-                              child: Text(members.contains(_currentUserId) ? 'Joined' : 'Join Tribe'),
-                            ),
-                          ],
-                        ),
-                        onTap: () {
-                          print('Tapped tribe: $tribeName'); // Debug log
-                          // TODO: Navigate to tribe details page or handle tap
-                        },
                       ),
                     );
                   },

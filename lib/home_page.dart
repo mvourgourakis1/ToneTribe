@@ -21,12 +21,8 @@ class _HomePageState extends State<HomePage> {
 
   void _onItemTapped(int index) {
     if (index == 1) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const MyHomePage(title: 'ToneTribe Chat'),
-        ),
-      );
+      // Show a dialog to select a tribe for chat
+      _showTribeSelectionDialog();
       return;
     }
     if (index == 2) {
@@ -50,6 +46,75 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       _selectedIndex = index;
     });
+  }
+
+  void _showTribeSelectionDialog() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Select a Tribe'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+            stream: FirebaseFirestore.instance
+                .collection('tribes')
+                .where('members', arrayContains: user.uid)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return Text('Error: ${snapshot.error}');
+              }
+              if (!snapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.data!.docs.isEmpty) {
+                return const Text('No tribes found. Join a tribe first!');
+              }
+
+              final tribes = snapshot.data!.docs
+                  .map((doc) => Tribe.fromFirestore(doc))
+                  .toList();
+
+              return ListView.builder(
+                shrinkWrap: true,
+                itemCount: tribes.length,
+                itemBuilder: (context, index) {
+                  final tribe = tribes[index];
+                  return ListTile(
+                    leading: tribe.groupIcon != null && tribe.groupIcon!.isNotEmpty
+                        ? CircleAvatar(
+                            backgroundImage: NetworkImage(tribe.groupIcon!),
+                          )
+                        : const CircleAvatar(
+                            child: Icon(Icons.group),
+                          ),
+                    title: Text(tribe.tribeName),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => TribeChat(tribe: tribe),
+                        ),
+                      );
+                    },
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -134,7 +199,7 @@ class _HomePageState extends State<HomePage> {
     } 
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance
-          .collection('groups')
+          .collection('tribes')
           .where('members', arrayContains: user.uid)
           .snapshots(),
       builder: (context, snapshot) {

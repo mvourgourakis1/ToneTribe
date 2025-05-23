@@ -2,200 +2,59 @@ import 'package:flutter/material.dart';
 import 'models/message.dart';
 import 'services/chat_service.dart';
 import 'services/auth_service.dart';
-import 'services/channel_service.dart';
+import 'models/tribe_model.dart';
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
+class TribeChat extends StatefulWidget {
+  final Tribe tribe;
 
-  final String title;
+  const TribeChat({super.key, required this.tribe});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<TribeChat> createState() => _TribeChatState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class _TribeChatState extends State<TribeChat> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final ChatService _chatService = ChatService();
   final AuthService _authService = AuthService();
-  final ChannelService _channelService = ChannelService();
   Message? _replyingTo;
   int? _hoveredMessageIndex;
-  String _currentChannelId = 'general'; // Default channel
+  bool _isLoading = true;
+  String? _error;
+  Channel? _selectedChannel;
   final TextEditingController _newChannelNameController = TextEditingController();
   final TextEditingController _newChannelDescriptionController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _initializeGeneralChannel();
+    _checkTribeMembership();
   }
 
-  Future<void> _initializeGeneralChannel() async {
+  Future<void> _checkTribeMembership() async {
     try {
-      // Check if general channel exists
-      final generalChannelQuery = await _channelService.getChannelByName('general');
-      if (generalChannelQuery == null) {
-        // Create general channel if it doesn't exist
-        final channelRef = await _channelService.createChannel(
-          'general',
-          'The main channel for all users',
-        );
-        setState(() {
-          _currentChannelId = channelRef.id;
-        });
-      } else {
-        setState(() {
-          _currentChannelId = generalChannelQuery.id;
-        });
-      }
+      final isMember = await _chatService.isUserInTribe(widget.tribe.id);
+      setState(() {
+        _isLoading = false;
+        if (!isMember) {
+          _error = 'You are not a member of this tribe';
+        }
+      });
     } catch (e) {
-      // Handle any errors silently - the default 'general' ID will be used
-      print('Error initializing general channel: $e');
+      setState(() {
+        _isLoading = false;
+        _error = 'Error checking tribe membership: $e';
+      });
     }
   }
 
-  void _createNewChannel() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Create New Channel'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: _newChannelNameController,
-              decoration: const InputDecoration(
-                labelText: 'Channel Name',
-                hintText: 'Enter channel name',
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _newChannelDescriptionController,
-              decoration: const InputDecoration(
-                labelText: 'Description',
-                hintText: 'Enter channel description',
-              ),
-              maxLines: 3,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              if (_newChannelNameController.text.isNotEmpty) {
-                try {
-                  final channelRef = await _channelService.createChannel(
-                    _newChannelNameController.text,
-                    _newChannelDescriptionController.text,
-                  );
-                  setState(() {
-                    _currentChannelId = channelRef.id;
-                  });
-                  _newChannelNameController.clear();
-                  _newChannelDescriptionController.clear();
-                  Navigator.pop(context);
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error creating channel: $e')),
-                  );
-                }
-              }
-            },
-            child: const Text('Create'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _joinChannel() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Join Channel'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: StreamBuilder(
-            stream: _channelService.getUserChannels(),
-            builder: (context, snapshot) {
-              if (snapshot.hasError) {
-                return Text('Error: ${snapshot.error}');
-              }
-
-              if (!snapshot.hasData) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              final channels = snapshot.data!.docs;
-
-              if (channels.isEmpty) {
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text('No channels available'),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        _createNewChannel();
-                      },
-                      child: const Text('Create New Channel'),
-                    ),
-                  ],
-                );
-              }
-
-              return ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 300),
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: channels.map((channel) {
-                      return ListTile(
-                        title: Text(channel['name'] ?? 'Unnamed Channel'),
-                        subtitle: Text(channel['description'] ?? 'No description'),
-                        onTap: () async {
-                          try {
-                            await _channelService.joinChannel(channel.id);
-                            setState(() {
-                              _currentChannelId = channel.id;
-                            });
-                            Navigator.pop(context);
-                          } catch (e) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Error joining channel: $e')),
-                            );
-                          }
-                        },
-                      );
-                    }).toList(),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _sendMessage() {
-    if (_messageController.text.trim().isEmpty) return;
+    if (_messageController.text.trim().isEmpty || _selectedChannel == null) return;
 
-    _chatService.sendMessage(
-      channelId: _currentChannelId,
+    _chatService.sendChannelMessage(
+      tribeId: widget.tribe.id,
+      channelId: _selectedChannel!.id,
       content: _messageController.text,
       replyTo: _replyingTo,
     );
@@ -217,6 +76,72 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {
       _replyingTo = null;
     });
+  }
+
+  Future<void> _createNewChannel() async {
+    if (_newChannelNameController.text.trim().isEmpty) return;
+
+    try {
+      final channel = await _chatService.createChannel(
+        tribeId: widget.tribe.id,
+        name: _newChannelNameController.text.trim(),
+        description: _newChannelDescriptionController.text.trim().isEmpty
+            ? null
+            : _newChannelDescriptionController.text.trim(),
+      );
+
+      setState(() {
+        _selectedChannel = channel;
+      });
+
+      _newChannelNameController.clear();
+      _newChannelDescriptionController.clear();
+      Navigator.pop(context);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error creating channel: $e')),
+      );
+    }
+  }
+
+  void _showCreateChannelDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Create New Channel'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _newChannelNameController,
+              decoration: const InputDecoration(
+                labelText: 'Channel Name',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _newChannelDescriptionController,
+              decoration: const InputDecoration(
+                labelText: 'Description (Optional)',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 2,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: _createNewChannel,
+            child: const Text('Create'),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildMessageActions(Message message, int index) {
@@ -248,47 +173,105 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             if (message.userId == _authService.currentUser?.uid)
               IconButton(
-                icon: const Icon(Icons.delete_outline, size: 20),
-                onPressed: () => _chatService.deleteMessage(_currentChannelId, message.id),
+                icon: const Icon(Icons.delete, size: 20),
+                onPressed: () => _deleteMessage(message),
                 tooltip: 'Delete',
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),
+            IconButton(
+              icon: const Icon(Icons.flag, size: 20),
+              onPressed: () => _reportMessage(message),
+              tooltip: 'Report',
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
           ],
         ),
       ),
     );
   }
 
+  Future<void> _deleteMessage(Message message) async {
+    if (_selectedChannel == null) return;
+    try {
+      await _chatService.deleteChannelMessage(
+        widget.tribe.id,
+        _selectedChannel!.id,
+        message.id,
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error deleting message: $e')),
+      );
+    }
+  }
+
+  Future<void> _reportMessage(Message message) async {
+    if (_selectedChannel == null) return;
+    try {
+      await _chatService.reportChannelMessage(
+        widget.tribe.id,
+        _selectedChannel!.id,
+        message.id,
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Message reported')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error reporting message: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(_error!, style: const TextStyle(color: Colors.red)),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Go Back'),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(widget.title),
+        title: Text(widget.tribe.tribeName),
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
-            onPressed: _createNewChannel,
+            onPressed: _showCreateChannelDialog,
             tooltip: 'Create Channel',
-          ),
-          IconButton(
-            icon: const Icon(Icons.group_add),
-            onPressed: _joinChannel,
-            tooltip: 'Join Channel',
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () => _authService.signOut(),
-            tooltip: 'Sign Out',
           ),
         ],
       ),
-      body: Column(
+      body: Row(
         children: [
-          Expanded(
-            child: StreamBuilder<List<Message>>(
-              stream: _chatService.getMessages(_currentChannelId),
+          // Channel list
+          Container(
+            width: 240,
+            decoration: BoxDecoration(
+              border: Border(
+                right: BorderSide(
+                  color: Theme.of(context).dividerColor,
+                ),
+              ),
+            ),
+            child: StreamBuilder<List<Channel>>(
+              stream: _chatService.getTribeChannels(widget.tribe.id),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
                   return Center(child: Text('Error: ${snapshot.error}'));
@@ -298,218 +281,274 @@ class _MyHomePageState extends State<MyHomePage> {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                final messages = snapshot.data!;
-                final currentUser = _authService.currentUser;
+                final channels = snapshot.data!;
+
+                if (channels.isEmpty) {
+                  return const Center(
+                    child: Text('No channels yet. Create one!'),
+                  );
+                }
 
                 return ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.all(16),
-                  itemCount: messages.length,
+                  itemCount: channels.length,
                   itemBuilder: (context, index) {
-                    final message = messages[index];
-                    final isMe = message.userId == currentUser?.uid;
-
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: Row(
-                        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (!isMe) ...[
-                            CircleAvatar(
-                              backgroundImage: NetworkImage(message.profileImageUrl),
-                              radius: 20,
-                            ),
-                            const SizedBox(width: 8),
-                          ],
-                          Flexible(
-                            child: MouseRegion(
-                              onEnter: (_) => setState(() => _hoveredMessageIndex = index),
-                              onExit: (_) => setState(() => _hoveredMessageIndex = null),
-                              child: GestureDetector(
-                                onLongPress: () => _startReply(message),
-                                child: Column(
-                                  crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                                  children: [
-                                    if (!isMe)
-                                      Text(
-                                        message.username,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                    Stack(
-                                      children: [
-                                        Column(
-                                          crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                                          children: [
-                                            if (message.replyTo != null) ...[
-                                              Container(
-                                                margin: const EdgeInsets.only(bottom: 4),
-                                                padding: const EdgeInsets.all(8),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.grey.withOpacity(0.1),
-                                                  borderRadius: BorderRadius.circular(8),
-                                                ),
-                                                child: Column(
-                                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(
-                                                      'Replying to ${message.replyTo!.username}',
-                                                      style: TextStyle(
-                                                        fontSize: 12,
-                                                        color: Colors.grey[600],
-                                                        fontWeight: FontWeight.bold,
-                                                      ),
-                                                    ),
-                                                    Text(
-                                                      message.replyTo!.content,
-                                                      style: TextStyle(
-                                                        fontSize: 12,
-                                                        color: Colors.grey[600],
-                                                      ),
-                                                      maxLines: 1,
-                                                      overflow: TextOverflow.ellipsis,
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ],
-                                            Container(
-                                              padding: const EdgeInsets.all(12),
-                                              decoration: BoxDecoration(
-                                                color: isMe
-                                                    ? Theme.of(context).colorScheme.primary
-                                                    : Theme.of(context).colorScheme.secondary.withOpacity(0.1),
-                                                borderRadius: BorderRadius.circular(16),
-                                              ),
-                                              child: Text(
-                                                message.content,
-                                                style: TextStyle(
-                                                  color: isMe ? Colors.white : Colors.black,
-                                                ),
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              '${message.timestamp.hour}:${message.timestamp.minute.toString().padLeft(2, '0')}',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.grey[600],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        Positioned(
-                                          top: 0,
-                                          right: isMe ? null : 0,
-                                          left: isMe ? 0 : null,
-                                          child: _buildMessageActions(message, index),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                          if (isMe) ...[
-                            const SizedBox(width: 8),
-                            CircleAvatar(
-                              backgroundImage: NetworkImage(message.profileImageUrl),
-                              radius: 20,
-                            ),
-                          ],
-                        ],
-                      ),
+                    final channel = channels[index];
+                    return ListTile(
+                      selected: _selectedChannel?.id == channel.id,
+                      title: Text(channel.name),
+                      subtitle: channel.description != null
+                          ? Text(
+                              channel.description!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            )
+                          : null,
+                      onTap: () {
+                        setState(() {
+                          _selectedChannel = channel;
+                        });
+                      },
                     );
                   },
                 );
               },
             ),
           ),
-          if (_replyingTo != null)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              color: Colors.grey.withOpacity(0.1),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Replying to ${_replyingTo!.username}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
+          // Chat area
+          Expanded(
+            child: _selectedChannel == null
+                ? const Center(
+                    child: Text('Select a channel to start chatting'),
+                  )
+                : Column(
+                    children: [
+                      // Channel header
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          border: Border(
+                            bottom: BorderSide(
+                              color: Theme.of(context).dividerColor,
+                            ),
                           ),
                         ),
-                        Text(
-                          _replyingTo!.content,
-                          style: const TextStyle(fontSize: 12),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        child: Row(
+                          children: [
+                            const Icon(Icons.tag),
+                            const SizedBox(width: 8),
+                            Text(
+                              _selectedChannel!.name,
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            if (_selectedChannel!.description != null) ...[
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _selectedChannel!.description!,
+                                  style: Theme.of(context).textTheme.bodyMedium,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, size: 20),
-                    onPressed: _cancelReply,
-                  ),
-                ],
-              ),
-            ),
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.2),
-                  spreadRadius: 1,
-                  blurRadius: 3,
-                  offset: const Offset(0, -1),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _messageController,
-                    decoration: InputDecoration(
-                      hintText: _replyingTo != null
-                          ? 'Reply to ${_replyingTo!.username}...'
-                          : 'Type a message...',
-                      border: const OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(24)),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    ),
+                      // Messages
+                      Expanded(
+                        child: StreamBuilder<List<Message>>(
+                          stream: _chatService.getChannelMessages(
+                            widget.tribe.id,
+                            _selectedChannel!.id,
+                          ),
+                          builder: (context, snapshot) {
+                            if (snapshot.hasError) {
+                              return Center(
+                                child: Text('Error: ${snapshot.error}'),
+                              );
+                            }
+
+                            if (!snapshot.hasData) {
+                              return const Center(
+                                child: CircularProgressIndicator(),
+                              );
+                            }
+
+                            final messages = snapshot.data!;
+
+                            if (messages.isEmpty) {
+                              return const Center(
+                                child: Text(
+                                    'No messages yet. Start the conversation!'),
+                              );
+                            }
+
+                            return ListView.builder(
+                              controller: _scrollController,
+                              padding: const EdgeInsets.all(16),
+                              itemCount: messages.length,
+                              itemBuilder: (context, index) {
+                                final message = messages[index];
+                                return MouseRegion(
+                                  onEnter: (_) =>
+                                      setState(() => _hoveredMessageIndex = index),
+                                  onExit: (_) =>
+                                      setState(() => _hoveredMessageIndex = null),
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(bottom: 16),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        if (message.replyTo != null) ...[
+                                          Container(
+                                            margin: const EdgeInsets.only(bottom: 4),
+                                            padding: const EdgeInsets.all(8),
+                                            decoration: BoxDecoration(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .surfaceVariant,
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                            child: Text(
+                                              'Replying to ${message.replyTo!.username}: ${message.replyTo!.content}',
+                                              style: TextStyle(
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .onSurfaceVariant,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                        Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            CircleAvatar(
+                                              backgroundImage: NetworkImage(
+                                                  message.profileImageUrl),
+                                              radius: 20,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Row(
+                                                    children: [
+                                                      Text(
+                                                        message.username,
+                                                        style: const TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(width: 8),
+                                                      Text(
+                                                        _formatTimestamp(
+                                                            message.timestamp),
+                                                        style: TextStyle(
+                                                          color: Colors.grey[600],
+                                                          fontSize: 12,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  Text(message.content),
+                                                ],
+                                              ),
+                                            ),
+                                            _buildMessageActions(
+                                                message, index),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                      // Reply preview
+                      if (_replyingTo != null)
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          color: Theme.of(context).colorScheme.surfaceVariant,
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Replying to ${_replyingTo!.username}: ${_replyingTo!.content}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.close),
+                                onPressed: _cancelReply,
+                              ),
+                            ],
+                          ),
+                        ),
+                      // Message input
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _messageController,
+                                decoration: const InputDecoration(
+                                  hintText: 'Type a message...',
+                                  border: OutlineInputBorder(),
+                                ),
+                                maxLines: null,
+                                textInputAction: TextInputAction.newline,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            IconButton(
+                              icon: const Icon(Icons.send),
+                              onPressed: _sendMessage,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  onPressed: _sendMessage,
-                  icon: const Icon(Icons.send),
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ],
-            ),
           ),
         ],
       ),
     );
   }
 
+  String _formatTimestamp(DateTime timestamp) {
+    final now = DateTime.now();
+    final difference = now.difference(timestamp);
+
+    if (difference.inDays > 0) {
+      return '${difference.inDays}d ago';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours}h ago';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes}m ago';
+    } else {
+      return 'Just now';
+    }
+  }
+
   @override
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
+    _newChannelNameController.dispose();
+    _newChannelDescriptionController.dispose();
     super.dispose();
   }
 }

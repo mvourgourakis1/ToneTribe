@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'models/tribe_model.dart';
+import 'playlist_creation.dart';
+import 'TribeChat.dart';
 
 class TribePage extends StatelessWidget {
   final Tribe tribe;
@@ -12,12 +14,36 @@ class TribePage extends StatelessWidget {
       appBar: AppBar(
         title: Text(tribe.tribeName),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.chat),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => TribeChat(tribe: tribe),
+                ),
+              );
+            },
+            tooltip: 'Chat',
+          ),
           if (tribe.isPinned)
             const Padding(
               padding: EdgeInsets.only(right: 16.0),
               child: Icon(Icons.push_pin, color: Colors.amber),
             ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const PlaylistCreation(),
+            ),
+          );
+        },
+        child: const Icon(Icons.add),
+        tooltip: 'Create Playlist',
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),

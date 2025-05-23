@@ -81,11 +81,21 @@ class AuthService {
     String? displayName,
     String? photoURL,
   }) async {
-    final userDoc = _firestore.collection('users').doc(uid);
-    final doc = await userDoc.get();
-    
-    if (!doc.exists) {
-      await userDoc.set({
+    try {
+      final userDoc = _firestore.collection('users').doc(uid);
+      final doc = await userDoc.get();
+      
+      if (!doc.exists) {
+        await userDoc.set({
+          'created_at': FieldValue.serverTimestamp(),
+          'email': email,
+          'username': displayName,
+          'profile_picture_url': photoURL,
+        });
+      }
+    } catch (e) {
+      // If there's an error, try to create the document anyway
+      await _firestore.collection('users').doc(uid).set({
         'created_at': FieldValue.serverTimestamp(),
         'email': email,
         'username': displayName,

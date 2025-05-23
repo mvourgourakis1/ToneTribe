@@ -1,11 +1,13 @@
 // lib/screens/home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../data_models.dart';
 import '../TribeChat.dart';
 import 'forum_screen.dart';
 import '../services/auth_service.dart';
 import '../playlist_creation.dart';
+import '../models/tribe_model.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -27,6 +29,75 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       }
     }
+  }
+
+  void _showTribeSelectionDialog() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Select a Tribe'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+            stream: FirebaseFirestore.instance
+                .collection('tribes')
+                .where('members', arrayContains: user.uid)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return Text('Error: ${snapshot.error}');
+              }
+              if (!snapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.data!.docs.isEmpty) {
+                return const Text('No tribes found. Join a tribe first!');
+              }
+
+              final tribes = snapshot.data!.docs
+                  .map((doc) => Tribe.fromFirestore(doc))
+                  .toList();
+
+              return ListView.builder(
+                shrinkWrap: true,
+                itemCount: tribes.length,
+                itemBuilder: (context, index) {
+                  final tribe = tribes[index];
+                  return ListTile(
+                    leading: tribe.groupIcon != null && tribe.groupIcon!.isNotEmpty
+                        ? CircleAvatar(
+                            backgroundImage: NetworkImage(tribe.groupIcon!),
+                          )
+                        : const CircleAvatar(
+                            child: Icon(Icons.group),
+                          ),
+                    title: Text(tribe.tribeName),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => TribeChat(tribe: tribe),
+                        ),
+                      );
+                    },
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -82,14 +153,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     'Chat Channels',
                     'Join music discussion channels',
                     Icons.chat,
-                    () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const MyHomePage(title: 'ToneTribe Chat'),
-                        ),
-                      );
-                    },
+                    _showTribeSelectionDialog,
                   ),
                   _buildFeatureCard(
                     context,
