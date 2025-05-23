@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'models/tribe_model.dart';
 import 'playlist_creation.dart';
 import 'TribeChat.dart';
+import 'screens/tribe-election-system.dart';
 
 class TribePage extends StatelessWidget {
   final Tribe tribe;
@@ -14,6 +15,18 @@ class TribePage extends StatelessWidget {
       appBar: AppBar(
         title: Text(tribe.tribeName),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.how_to_vote),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => TribeLeaderElectionPage(tribe: tribe),
+                ),
+              );
+            },
+            tooltip: 'Tribe Elections',
+          ),
           IconButton(
             icon: const Icon(Icons.chat),
             onPressed: () {

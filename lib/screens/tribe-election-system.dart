@@ -2,29 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
-
-void main() {
-  runApp(const TribeLeaderElectionApp());
-}
-
-class TribeLeaderElectionApp extends StatelessWidget {
-  const TribeLeaderElectionApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Tribe Leader Election',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        useMaterial3: true,
-      ),
-      home: const TribeLeaderElectionPage(),
-    );
-  }
-}
+import '../models/tribe_model.dart';
 
 class TribeLeaderElectionPage extends StatefulWidget {
-  const TribeLeaderElectionPage({super.key});
+  final Tribe tribe;
+  
+  const TribeLeaderElectionPage({super.key, required this.tribe});
 
   @override
   State<TribeLeaderElectionPage> createState() => _TribeLeaderElectionPageState();
@@ -46,7 +29,12 @@ class _TribeLeaderElectionPageState extends State<TribeLeaderElectionPage> {
 
   Future<void> _initializeElection() async {
     try {
-      final electionDoc = await _firestore.collection('elections').doc('current').get();
+      final electionDoc = await _firestore
+          .collection('tribes')
+          .doc(widget.tribe.id)
+          .collection('elections')
+          .doc('current')
+          .get();
       
       if (!electionDoc.exists) {
         // Create new election if none exists
@@ -73,13 +61,18 @@ class _TribeLeaderElectionPageState extends State<TribeLeaderElectionPage> {
       'startDate': Timestamp.fromDate(now),
       'endDate': Timestamp.fromDate(now.add(const Duration(days: 3))),
       'candidates': [],
-      'eligibleVoters': [],
+      'eligibleVoters': widget.tribe.members ?? [],
       'votesForCandidates': {},
       'vibeStatementsForCandidates': {},
       'status': 'active',
     };
 
-    await _firestore.collection('elections').doc('current').set(electionData);
+    await _firestore
+        .collection('tribes')
+        .doc(widget.tribe.id)
+        .collection('elections')
+        .doc('current')
+        .set(electionData);
     currentElection = Election.fromFirestore(electionData, 'current');
   }
 
