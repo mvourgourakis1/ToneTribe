@@ -89,7 +89,8 @@ class _ForumScreenState extends State<ForumScreen> {
       width: 180,
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
-        border: Border(right: BorderSide(color: Colors.grey.shade300)),
+        color: Colors.black.withOpacity(0.1),
+        border: Border(right: BorderSide(color: Colors.orange.withOpacity(0.3))),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -105,7 +106,7 @@ class _ForumScreenState extends State<ForumScreen> {
                   title: Text(filter),
                   dense: true,
                   selected: _selectedFilter == filter,
-                  selectedTileColor: Colors.red.withOpacity(0.1),
+                  selectedTileColor: Colors.orange.withOpacity(0.2),
                   onTap: () {
                     setState(() {
                       _selectedFilter = filter;
@@ -125,7 +126,12 @@ class _ForumScreenState extends State<ForumScreen> {
 
   Widget _buildPostItem(BuildContext context, Post post) {
     return Card(
+      color: Colors.black.withOpacity(0.3),
       margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.orange.withOpacity(0.4), width: 1),
+      ),
       child: InkWell(
         onTap: () {
           Navigator.push(
@@ -160,9 +166,9 @@ class _ForumScreenState extends State<ForumScreen> {
                     spacing: 6.0,
                     runSpacing: 4.0,
                     children: post.tags.map((tag) => Chip(
-                      label: Text(tag, style: const TextStyle(fontSize: 10)),
+                      label: Text(tag, style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.9))),
                       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
-                      backgroundColor: Colors.grey.shade200,
+                      backgroundColor: Colors.orange.withOpacity(0.3),
                       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     )).toList(),
                   ),
@@ -190,7 +196,7 @@ class _ForumScreenState extends State<ForumScreen> {
                         children: [
                           IconButton(
                             icon: Icon(Icons.arrow_downward, size: 18,
-                                color: userVote == 'down' ? Colors.blue : Colors.grey),
+                                color: userVote == 'down' ? Colors.blueAccent : Colors.grey[600]),
                             tooltip: "Downvote (${post.downvotes})",
                             onPressed: () async {
                               await _forumService.voteOnPost(post.id, 'down');
@@ -208,7 +214,7 @@ class _ForumScreenState extends State<ForumScreen> {
                           const SizedBox(width: 8),
                           IconButton(
                             icon: Icon(Icons.arrow_upward, size: 18,
-                                color: userVote == 'up' ? Colors.red : Colors.grey),
+                                color: userVote == 'up' ? Colors.orangeAccent : Colors.grey[600]),
                             tooltip: "Upvote (${post.upvotes})",
                             onPressed: () async {
                               await _forumService.voteOnPost(post.id, 'up');
@@ -238,9 +244,9 @@ class _ForumScreenState extends State<ForumScreen> {
                       if (!snapshot.hasData) return const Text("0");
                       return Row(
                         children: [
-                          const Icon(Icons.comment_outlined, size: 16, color: Colors.grey),
+                          Icon(Icons.comment_outlined, size: 16, color: Colors.grey[500]),
                           const SizedBox(width: 4),
-                          Text("${snapshot.data!.docs.length}", style: const TextStyle(fontSize: 12)),
+                          Text("${snapshot.data!.docs.length}", style: TextStyle(fontSize: 12, color: Colors.grey[400])),
                         ],
                       );
                     },
@@ -261,6 +267,8 @@ class _ForumScreenState extends State<ForumScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Music Forums'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.add_circle_outline),
@@ -280,91 +288,100 @@ class _ForumScreenState extends State<ForumScreen> {
         ],
       ),
       endDrawer: !isWideScreen ? Drawer(child: _buildFilterPanel()) : null,
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Search Posts, Tags...',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8.0),
-                ),
-              ),
-              onChanged: (value) {
-                setState(() {
-                  _searchQuery = value;
-                });
-              },
-            ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.orange.shade700, Colors.black],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
           ),
-          Expanded(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (isWideScreen) _buildFilterPanel(),
-                Expanded(
-                  child: StreamBuilder<List<Post>>(
-                    stream: _forumService.getPosts(),
-                    builder: (context, snapshot) {
-                      if (snapshot.hasError) {
-                        return Center(child: Text('Error: ${snapshot.error}'));
-                      }
-
-                      if (!snapshot.hasData) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-
-                      var posts = snapshot.data!;
-
-                      // Apply search filter
-                      if (_searchQuery.isNotEmpty) {
-                        posts = posts.where((post) {
-                          return post.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                                 post.content.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                                 post.tags.any((tag) => tag.toLowerCase().contains(_searchQuery.toLowerCase()));
-                        }).toList();
-                      }
-
-                      // Apply tag filter
-                      if (_selectedFilter != null && _selectedFilter != "All") {
-                        if (_selectedFilter == "Most Upvoted") {
-                          posts.sort((a, b) => b.upvotes.compareTo(a.upvotes));
-                        } else if (_selectedFilter == "Newest") {
-                          posts.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-                        } else {
-                          posts = posts.where((post) =>
-                            post.tags.any((tag) => tag.toLowerCase() == _selectedFilter!.toLowerCase())
-                          ).toList();
-                        }
-                      }
-
-                      if (posts.isEmpty) {
-                        return Center(
-                          child: Text(
-                            _searchQuery.isNotEmpty || (_selectedFilter != null && _selectedFilter != "All")
-                                ? 'No posts found matching your criteria.'
-                                : 'No posts yet. Create one!',
-                            style: Theme.of(context).textTheme.titleMedium,
-                            textAlign: TextAlign.center,
-                          ),
-                        );
-                      }
-
-                      return ListView.builder(
-                        itemCount: posts.length,
-                        itemBuilder: (context, index) {
-                          return _buildPostItem(context, posts[index]);
-                        },
-                      );
-                    },
+        ),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: 'Search Posts, Tags...',
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.0),
                   ),
                 ),
-              ],
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value;
+                  });
+                },
+              ),
             ),
-          ),
-        ],
+            Expanded(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (isWideScreen) _buildFilterPanel(),
+                  Expanded(
+                    child: StreamBuilder<List<Post>>(
+                      stream: _forumService.getPosts(),
+                      builder: (context, snapshot) {
+                        if (snapshot.hasError) {
+                          return Center(child: Text('Error: ${snapshot.error}'));
+                        }
+
+                        if (!snapshot.hasData) {
+                          return const Center(child: CircularProgressIndicator());
+                        }
+
+                        var posts = snapshot.data!;
+
+                        // Apply search filter
+                        if (_searchQuery.isNotEmpty) {
+                          posts = posts.where((post) {
+                            return post.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                                   post.content.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                                   post.tags.any((tag) => tag.toLowerCase().contains(_searchQuery.toLowerCase()));
+                          }).toList();
+                        }
+
+                        // Apply tag filter
+                        if (_selectedFilter != null && _selectedFilter != "All") {
+                          if (_selectedFilter == "Most Upvoted") {
+                            posts.sort((a, b) => b.upvotes.compareTo(a.upvotes));
+                          } else if (_selectedFilter == "Newest") {
+                            posts.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+                          } else {
+                            posts = posts.where((post) =>
+                              post.tags.any((tag) => tag.toLowerCase() == _selectedFilter!.toLowerCase())
+                            ).toList();
+                          }
+                        }
+
+                        if (posts.isEmpty) {
+                          return Center(
+                            child: Text(
+                              _searchQuery.isNotEmpty || (_selectedFilter != null && _selectedFilter != "All")
+                                  ? 'No posts found matching your criteria.'
+                                  : 'No posts yet. Create one!',
+                              style: Theme.of(context).textTheme.titleMedium,
+                              textAlign: TextAlign.center,
+                            ),
+                          );
+                        }
+
+                        return ListView.builder(
+                          itemCount: posts.length,
+                          itemBuilder: (context, index) {
+                            return _buildPostItem(context, posts[index]);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

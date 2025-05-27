@@ -47,81 +47,90 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     return Scaffold(
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Profile row
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                ProfilePicture(imageUrl: _profilePictureUrl),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        user.displayName ?? user.email ?? 'User',
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.orange.shade700, Colors.black],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Profile row
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  ProfilePicture(imageUrl: _profilePictureUrl),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          user.displayName ?? user.email ?? 'User',
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                      Text(
-                        user.email ?? '',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey,
+                        Text(
+                          user.email ?? '',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[400],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.settings),
+                    onPressed: () {
+                      Navigator.pushNamed(context, '/settings');
+                    },
+                  )
+                ],
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                "Favorite Songs",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: List.generate(
+                  3,
+                  (index) => SongThumbnail(isSelected: index == 1),
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                "Your Playlists",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+              const SizedBox(height: 8),
+              GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 2,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+                children: List.generate(
+                  4,
+                  (index) => PlaylistGridItem(
+                    onTap: () {
+                      Navigator.pushNamed(context, '/playlist/$index');
+                    },
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.settings),
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/settings');
-                  },
-                )
-              ],
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              "Favorite Songs",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: List.generate(
-                3,
-                (index) => SongThumbnail(isSelected: index == 1),
               ),
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              "Your Playlists",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-            ),
-            const SizedBox(height: 8),
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
-              children: List.generate(
-                4,
-                (index) => PlaylistGridItem(
-                  onTap: () {
-                    Navigator.pushNamed(context, '/playlist/$index');
-                  },
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -134,6 +143,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), label: ''),
           BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: ''),
         ],
+        backgroundColor: Colors.black.withOpacity(0.5),
+        elevation: 0,
+        selectedItemColor: Colors.orange,
+        unselectedItemColor: Colors.grey[500],
+        type: BottomNavigationBarType.fixed,
+        showSelectedLabels: false,
+        showUnselectedLabels: false,
       ),
     );
   }

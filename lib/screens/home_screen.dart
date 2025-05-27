@@ -108,6 +108,8 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('ToneTribe'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.forum),
@@ -128,65 +130,74 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Welcome, $username',
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.orange.shade700, Colors.black],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Welcome, $username',
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
               ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 32),
-            Expanded(
-              child: GridView.count(
-                crossAxisCount: 2,
-                mainAxisSpacing: 16,
-                crossAxisSpacing: 16,
-                children: [
-                  _buildFeatureCard(
-                    context,
-                    'Chat Channels',
-                    'Join music discussion channels',
-                    Icons.chat,
-                    _showTribeSelectionDialog,
-                  ),
-                  _buildFeatureCard(
-                    context,
-                    'Forums',
-                    'Discuss music in forums',
-                    Icons.forum,
-                    () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const ForumScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  _buildFeatureCard(
-                    context,
-                    'Create Playlist',
-                    'Build and share your music playlists',
-                    Icons.playlist_add,
-                    () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const PlaylistCreation(),
-                        ),
-                      );
-                    },
-                  ),
-                ],
+              const SizedBox(height: 32),
+              Expanded(
+                child: GridView.count(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 16,
+                  crossAxisSpacing: 16,
+                  children: [
+                    _buildFeatureCard(
+                      context,
+                      'Chat Channels',
+                      'Join music discussion channels',
+                      Icons.chat,
+                      _showTribeSelectionDialog,
+                    ),
+                    _buildFeatureCard(
+                      context,
+                      'Forums',
+                      'Discuss music in forums',
+                      Icons.forum,
+                      () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ForumScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _buildFeatureCard(
+                      context,
+                      'Create Playlist',
+                      'Build and share your music playlists',
+                      Icons.playlist_add,
+                      () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const PlaylistCreation(),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -200,7 +211,12 @@ class _HomeScreenState extends State<HomeScreen> {
     VoidCallback onTap,
   ) {
     return Card(
-      elevation: 4,
+      color: Colors.black.withOpacity(0.3),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.orange.withOpacity(0.5), width: 1),
+      ),
       child: InkWell(
         onTap: onTap,
         child: Padding(
@@ -211,7 +227,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Icon(
                 icon,
                 size: 48,
-                color: Theme.of(context).colorScheme.primary,
+                color: Colors.orange,
               ),
               const SizedBox(height: 16),
               Text(
@@ -226,7 +242,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Text(
                 description,
                 style: TextStyle(
-                  color: Colors.grey[600],
+                  color: Colors.grey[400],
                 ),
                 textAlign: TextAlign.center,
               ),

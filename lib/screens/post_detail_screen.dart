@@ -100,11 +100,16 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
 
   Widget _buildComment(Comment comment, {int depth = 0}) {
     return Card(
+      color: Colors.black.withOpacity(0.2),
       margin: EdgeInsets.only(
         left: depth * 16.0,
         right: 8.0,
         top: 8.0,
         bottom: 8.0,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: Colors.orange.withOpacity(0.3), width: 1),
       ),
       child: Padding(
         padding: const EdgeInsets.all(12.0),
@@ -123,7 +128,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                 Text(
                   _formatTimestamp(comment.timestamp),
                   style: TextStyle(
-                    color: Colors.grey[600],
+                    color: Colors.grey[500],
                     fontSize: 12,
                   ),
                 ),
@@ -197,221 +202,213 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Post Details'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            StreamBuilder<DocumentSnapshot>(
-              stream: _forumService.firestore.collection('posts').doc(_post.id).snapshots(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) return const SizedBox.shrink();
-                
-                final data = snapshot.data!.data() as Map<String, dynamic>?;
-                if (data == null) return const SizedBox.shrink();
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.orange.shade700, Colors.black],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              StreamBuilder<DocumentSnapshot>(
+                stream: _forumService.firestore.collection('posts').doc(_post.id).snapshots(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return const SizedBox.shrink();
+                  
+                  final data = snapshot.data!.data() as Map<String, dynamic>?;
+                  if (data == null) return const SizedBox.shrink();
 
-                final upvotes = data['upvotes'] ?? 0;
-                final downvotes = data['downvotes'] ?? 0;
+                  final upvotes = data['upvotes'] ?? 0;
+                  final downvotes = data['downvotes'] ?? 0;
 
-                return Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
+                  return Card(
+                    color: Colors.black.withOpacity(0.3),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(color: Colors.orange.withOpacity(0.4), width: 1),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _post.title,
+                            style: Theme.of(context).textTheme.headlineSmall,
+                          ),
+                          const SizedBox(height: 8),
+                          if (_post.tags.isNotEmpty)
+                            Wrap(
+                              spacing: 8.0,
+                              runSpacing: 4.0,
+                              children: _post.tags.map((tag) => Chip(
+                                label: Text(tag, style: TextStyle(color: Colors.white.withOpacity(0.9))),
+                                backgroundColor: Colors.orange.withOpacity(0.3),
+                                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
+                              )).toList(),
+                            ),
+                          const SizedBox(height: 16),
+                          Text(_post.content),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Text(
+                                'Posted by ${_post.author}',
+                                style: TextStyle(
+                                  color: Colors.grey[400],
+                                  fontSize: 12,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                _formatTimestamp(_post.timestamp),
+                                style: TextStyle(
+                                  color: Colors.grey[400],
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              StreamBuilder<String?>(
+                                stream: _forumService.getUserPostVote(_post.id).asStream(),
+                                builder: (context, snapshot) {
+                                  final userVote = snapshot.data;
+                                  return Row(
+                                    children: [
+                                      IconButton(
+                                        icon: Icon(
+                                          Icons.arrow_downward,
+                                          color: userVote == 'down' ? Colors.blue : Colors.grey,
+                                        ),
+                                        onPressed: () => _handlePostVote('down'),
+                                      ),
+                                      Text('$downvotes'),
+                                      const SizedBox(width: 8),
+                                      IconButton(
+                                        icon: Icon(
+                                          Icons.arrow_upward,
+                                          color: userVote == 'up' ? Colors.red : Colors.grey,
+                                        ),
+                                        onPressed: () => _handlePostVote('up'),
+                                      ),
+                                      Text('$upvotes'),
+                                    ],
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+              // Comments section
+              Text(
+                'Comments',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 8),
+              // Comment input
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _commentController,
+                      decoration: const InputDecoration(
+                        hintText: 'Write a comment...',
+                        border: OutlineInputBorder(),
+                      ),
+                      maxLines: 3,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: () {
+                      if (_commentController.text.isNotEmpty) {
+                        _addComment(_commentController.text);
+                      }
+                    },
+                    child: const Text('Post'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // Comments list
+              StreamBuilder<QuerySnapshot>(
+                stream: _forumService.firestore
+                    .collection('posts')
+                    .doc(_post.id)
+                    .collection('comments')
+                    .orderBy('timestamp', descending: false)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  // Group comments by parentCommentId
+                  final comments = snapshot.data!.docs.map((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    return Comment(
+                      id: doc.id,
+                      postId: _post.id,
+                      parentCommentId: data['parentCommentId'],
+                      author: data['author'] ?? 'Anonymous',
+                      content: data['content'] ?? '',
+                      timestamp: (data['timestamp'] as Timestamp).toDate(),
+                      upvotes: data['upvotes'] ?? 0,
+                      downvotes: data['downvotes'] ?? 0,
+                    );
+                  }).toList();
+
+                  // Build comment tree
+                  final commentMap = <String, List<Comment>>{};
+                  final rootComments = <Comment>[];
+
+                  for (final comment in comments) {
+                    if (comment.parentCommentId == null) {
+                      rootComments.add(comment);
+                    } else {
+                      commentMap.putIfAbsent(comment.parentCommentId!, () => []).add(comment);
+                    }
+                  }
+
+                  Widget buildCommentTree(Comment comment, {int depth = 0}) {
+                    return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          _post.title,
-                          style: Theme.of(context).textTheme.headlineSmall,
-                        ),
-                        const SizedBox(height: 8),
-                        if (_post.tags.isNotEmpty)
-                          Wrap(
-                            spacing: 8.0,
-                            runSpacing: 4.0,
-                            children: _post.tags.map((tag) => Chip(
-                              label: Text(tag),
-                              backgroundColor: Colors.grey.shade200,
-                            )).toList(),
-                          ),
-                        const SizedBox(height: 16),
-                        Text(_post.content),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Text(
-                              'Posted by ${_post.author}',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 12,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              _formatTimestamp(_post.timestamp),
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            StreamBuilder<String?>(
-                              stream: _forumService.getUserPostVote(_post.id).asStream(),
-                              builder: (context, snapshot) {
-                                final userVote = snapshot.data;
-                                return Row(
-                                  children: [
-                                    IconButton(
-                                      icon: Icon(
-                                        Icons.arrow_downward,
-                                        color: userVote == 'down' ? Colors.blue : Colors.grey,
-                                      ),
-                                      onPressed: () => _handlePostVote('down'),
-                                    ),
-                                    Text('$downvotes'),
-                                    const SizedBox(width: 8),
-                                    IconButton(
-                                      icon: Icon(
-                                        Icons.arrow_upward,
-                                        color: userVote == 'up' ? Colors.red : Colors.grey,
-                                      ),
-                                      onPressed: () => _handlePostVote('up'),
-                                    ),
-                                    Text('$upvotes'),
-                                  ],
-                                );
-                              },
-                            ),
-                          ],
-                        ),
+                        _buildComment(comment, depth: depth),
+                        if (commentMap.containsKey(comment.id))
+                          ...commentMap[comment.id]!.map((reply) => buildCommentTree(reply, depth: depth + 1)),
                       ],
-                    ),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 16),
-            // Comments section
-            Text(
-              'Comments',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            // Comment input
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _commentController,
-                    decoration: const InputDecoration(
-                      hintText: 'Write a comment...',
-                      border: OutlineInputBorder(),
-                    ),
-                    maxLines: 3,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: () {
-                    if (_commentController.text.isNotEmpty) {
-                      _addComment(_commentController.text);
-                    }
-                  },
-                  child: const Text('Post'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            // Comments list
-            StreamBuilder<QuerySnapshot>(
-              stream: _forumService.firestore
-                  .collection('posts')
-                  .doc(_post.id)
-                  .collection('comments')
-                  .orderBy('timestamp', descending: false)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                // Group comments by parentCommentId
-                final comments = snapshot.data!.docs.map((doc) {
-                  final data = doc.data() as Map<String, dynamic>;
-                  return Comment(
-                    id: doc.id,
-                    postId: _post.id,
-                    parentCommentId: data['parentCommentId'],
-                    author: data['author'] ?? 'Anonymous',
-                    content: data['content'] ?? '',
-                    timestamp: (data['timestamp'] as Timestamp).toDate(),
-                    upvotes: data['upvotes'] ?? 0,
-                    downvotes: data['downvotes'] ?? 0,
-                  );
-                }).toList();
-
-                // Build comment tree
-                final commentMap = <String, List<Comment>>{};
-                final rootComments = <Comment>[];
-
-                for (final comment in comments) {
-                  if (comment.parentCommentId == null) {
-                    rootComments.add(comment);
-                  } else {
-                    commentMap.putIfAbsent(comment.parentCommentId!, () => []).add(comment);
+                    );
                   }
-                }
 
-                Widget buildCommentTree(Comment comment, {int depth = 0}) {
                   return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildComment(comment, depth: depth),
-                      if (commentMap.containsKey(comment.id))
-                        ...commentMap[comment.id]!.map((reply) => buildCommentTree(reply, depth: depth + 1)),
-                    ],
+                    children: rootComments.map((comment) => buildCommentTree(comment)).toList(),
                   );
-                }
-
-                return Column(
-                  children: rootComments.map((comment) => buildCommentTree(comment)).toList(),
-                );
-              },
-            ),
-          ],
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-// Helper for time ago formatting (you might want a package like `timeago` for more features)
-class TimeAgo {
-  static String timeAgoSinceDate(DateTime date, {bool numericDates = true}) {
-    final date2 = DateTime.now();
-    final difference = date2.difference(date);
-
-    if (difference.inSeconds < 5) {
-      return 'Just now';
-    } else if (difference.inSeconds < 60) {
-      return '${difference.inSeconds} seconds ago';
-    } else if (difference.inMinutes < 60) {
-      return '${difference.inMinutes} minutes ago';
-    } else if (difference.inHours < 24) {
-      return '${difference.inHours} hours ago';
-    } else if (difference.inDays == 1) {
-      return (numericDates) ? '1 day ago' : 'Yesterday';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays} days ago';
-    } else if (difference.inDays < 30) {
-      return '${(difference.inDays / 7).floor()} weeks ago';
-    } else if (difference.inDays < 365) {
-      return '${(difference.inDays / 30).floor()} months ago';
-    }
-    return '${(difference.inDays / 365).floor()} years ago';
-  }
-}
+// Helper for time ago formatting (you might want a package like `

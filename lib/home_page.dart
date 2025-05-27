@@ -121,15 +121,14 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         title: const Text(
           'Your Tribes',
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
         actions: <Widget>[
           IconButton(
-            icon: const Icon(Icons.grid_view_outlined, color: Colors.black54),
+            icon: const Icon(Icons.grid_view_outlined),
             onPressed: () {
               Navigator.push(
                 context,
@@ -138,7 +137,7 @@ class _HomePageState extends State<HomePage> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.search, color: Colors.black54),
+            icon: const Icon(Icons.search),
             onPressed: () {
               Navigator.push(
                 context,
@@ -149,14 +148,23 @@ class _HomePageState extends State<HomePage> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.logout, color: Colors.black54),
+            icon: const Icon(Icons.logout),
             onPressed: () async {
               await FirebaseAuth.instance.signOut();
             },
           ),
         ],
       ),
-      body: _buildBody(),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.orange.shade700, Colors.black],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: _buildBody(),
+      ),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
@@ -174,18 +182,18 @@ class _HomePageState extends State<HomePage> {
           BottomNavigationBarItem(
             icon: CircleAvatar(
               radius: 14,
-              backgroundColor: Colors.grey,
+              backgroundColor: Colors.transparent,
             ),
             label: 'Profile',
           ),
         ],
         currentIndex: _selectedIndex,
-        selectedItemColor: Colors.black,
-        unselectedItemColor: Colors.grey[400],
+        selectedItemColor: Colors.orange,
+        unselectedItemColor: Colors.grey[500],
         showSelectedLabels: false,
         showUnselectedLabels: false,
         type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.black.withOpacity(0.5),
         elevation: 0,
         onTap: _onItemTapped,
       ),
@@ -235,12 +243,12 @@ class _HomePageState extends State<HomePage> {
   Widget _buildTribeItem(Tribe tribe) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.black.withOpacity(0.3),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(color: Colors.orange.withOpacity(0.5)),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.05),
+            color: Colors.black.withOpacity(0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -274,12 +282,12 @@ class _HomePageState extends State<HomePage> {
                 child: const Icon(Icons.group, color: Colors.white),
               ),
         title: Text(tribe.tribeName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-        subtitle: Text(tribe.description ?? '', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+        subtitle: Text(tribe.description ?? '', style: TextStyle(color: Colors.grey[400], fontSize: 12)),
         trailing: Container(
           width: 32,
           height: 32,
           decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade400, width: 1.5),
+            border: Border.all(color: Colors.orange.withOpacity(0.7), width: 1.5),
             borderRadius: BorderRadius.circular(6.0),
           ),
         ),

@@ -244,6 +244,8 @@ class _TribeLeaderElectionPageState extends State<TribeLeaderElectionPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Tribe Leader Election'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.person_add),
@@ -252,85 +254,94 @@ class _TribeLeaderElectionPageState extends State<TribeLeaderElectionPage> {
           ),
         ],
       ),
-      body: StreamBuilder<DocumentSnapshot>(
-        stream: _firestore.collection('elections').doc('current').snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.orange.shade700, Colors.black],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: StreamBuilder<DocumentSnapshot>(
+          stream: _firestore.collection('elections').doc('current').snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return Center(child: Text('Error: ${snapshot.error}'));
+            }
 
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
+            if (!snapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-          final data = snapshot.data!.data() as Map<String, dynamic>?;
-          if (data == null) {
-            return const Center(child: Text('No election data found'));
-          }
+            final data = snapshot.data!.data() as Map<String, dynamic>?;
+            if (data == null) {
+              return const Center(child: Text('No election data found'));
+            }
 
-          final candidates = List<Map<String, dynamic>>.from(data['candidates'] ?? []);
-          final endDate = (data['endDate'] as Timestamp).toDate();
-          final now = DateTime.now();
-          final isVotingOpen = now.isBefore(endDate);
+            final candidates = List<Map<String, dynamic>>.from(data['candidates'] ?? []);
+            final endDate = (data['endDate'] as Timestamp).toDate();
+            final now = DateTime.now();
+            final isVotingOpen = now.isBefore(endDate);
 
-          return Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Vote for Your Tribe Leaders',
-                  style: Theme.of(context).textTheme.headlineMedium,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Select a candidate to view their vibe and cast your vote. Voting closes in ${endDate.difference(now).inDays} days!',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey),
-                ),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: candidates.length,
-                    itemBuilder: (context, index) {
-                      final candidateData = candidates[index];
-                      final candidate = Candidate(
-                        user: TribeUser(
-                          id: candidateData['userId'],
-                          name: candidateData['username'],
-                          contributionScore: candidateData['contributionScore'] ?? 0,
-                        ),
-                        vibeStatement: candidateData['vibeStatement'] ?? '',
-                        endorsements: candidateData['endorsements'] ?? 0,
-                        totalVotes: candidateData['totalVotes'] ?? 0,
-                      );
-
-                      return CandidateCard(
-                        candidate: candidate,
-                        isSelected: selectedCandidate?.user.id == candidate.user.id,
-                        onTap: () {
-                          if (isVotingOpen) {
-                            setState(() {
-                              selectedCandidate = candidate;
-                            });
-                          }
-                        },
-                        onEndorse: () => _endorseCandidate(candidate),
-                      );
-                    },
+            return Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Vote for Your Tribe Leaders',
+                    style: Theme.of(context).textTheme.headlineMedium,
                   ),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: isVotingOpen && selectedCandidate != null ? _castVote : null,
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 50),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Select a candidate to view their vibe and cast your vote. Voting closes in ${endDate.difference(now).inDays} days!',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey),
                   ),
-                  child: const Text('Cast Vote'),
-                ),
-              ],
-            ),
-          );
-        },
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: candidates.length,
+                      itemBuilder: (context, index) {
+                        final candidateData = candidates[index];
+                        final candidate = Candidate(
+                          user: TribeUser(
+                            id: candidateData['userId'],
+                            name: candidateData['username'],
+                            contributionScore: candidateData['contributionScore'] ?? 0,
+                          ),
+                          vibeStatement: candidateData['vibeStatement'] ?? '',
+                          endorsements: candidateData['endorsements'] ?? 0,
+                          totalVotes: candidateData['totalVotes'] ?? 0,
+                        );
+
+                        return CandidateCard(
+                          candidate: candidate,
+                          isSelected: selectedCandidate?.user.id == candidate.user.id,
+                          onTap: () {
+                            if (isVotingOpen) {
+                              setState(() {
+                                selectedCandidate = candidate;
+                              });
+                            }
+                          },
+                          onEndorse: () => _endorseCandidate(candidate),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: isVotingOpen && selectedCandidate != null ? _castVote : null,
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size(double.infinity, 50),
+                    ),
+                    child: const Text('Cast Vote'),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -473,8 +484,13 @@ class CandidateCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      elevation: isSelected ? 8 : 2,
+      color: Colors.black.withOpacity(isSelected ? 0.4 : 0.25),
+      elevation: isSelected ? 6 : 2,
       margin: const EdgeInsets.symmetric(vertical: 8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Colors.orange.withOpacity(0.5), width: 1),
+      ),
       child: InkWell(
         onTap: onTap,
         child: Padding(
@@ -491,7 +507,7 @@ class CandidateCard extends StatelessWidget {
                   ),
                   Text(
                     'Score: ${candidate.user.contributionScore}',
-                    style: const TextStyle(color: Colors.grey),
+                    style: TextStyle(color: Colors.grey[400]),
                   ),
                 ],
               ),
@@ -506,11 +522,11 @@ class CandidateCard extends StatelessWidget {
                 children: [
                   Text(
                     '${candidate.endorsements} Endorsements',
-                    style: const TextStyle(color: Colors.blue),
+                    style: TextStyle(color: Colors.orangeAccent),
                   ),
                   TextButton(
                     onPressed: onEndorse,
-                    child: const Text('Endorse'),
+                    child: const Text('Endorse', style: TextStyle(color: Colors.orange)),
                   ),
                 ],
               ),
@@ -519,8 +535,8 @@ class CandidateCard extends StatelessWidget {
                   padding: const EdgeInsets.only(top: 8.0),
                   child: Text(
                     'Votes: ${candidate.totalVotes.toStringAsFixed(1)}',
-                    style: const TextStyle(
-                      color: Colors.green,
+                    style: TextStyle(
+                      color: Colors.greenAccent,
                       fontWeight: FontWeight.bold,
                     ),
                   ),

@@ -38,8 +38,44 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'ToneTribe',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        brightness: Brightness.dark,
+        primarySwatch: Colors.orange,
+        scaffoldBackgroundColor: Colors.black,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.orange,
+          brightness: Brightness.dark,
+        ),
         useMaterial3: true,
+        inputDecorationTheme: InputDecorationTheme(
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8.0),
+            borderSide: BorderSide(color: Colors.orange.withOpacity(0.7)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8.0),
+            borderSide: BorderSide(color: Colors.grey.withOpacity(0.6)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8.0),
+            borderSide: const BorderSide(color: Colors.orange, width: 2),
+          ),
+          labelStyle: TextStyle(color: Colors.grey[400]),
+          hintStyle: TextStyle(color: Colors.grey[600]),
+        ),
+        cardTheme: CardTheme(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        chipTheme: ChipThemeData(
+          backgroundColor: Colors.orange.withOpacity(0.3),
+          labelStyle: TextStyle(color: Colors.white.withOpacity(0.9)),
+          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          secondarySelectedColor: Colors.orange,
+          secondaryLabelStyle: TextStyle(color: Colors.black)
+        )
       ),
       home: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(),
@@ -157,90 +193,101 @@ class _LoginPageState extends State<LoginPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(_isRegistering ? 'ToneTribe - Register' : 'ToneTribe - Login'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 32),
-              TextField(
-                controller: _emailController,
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.email),
-                ),
-                keyboardType: TextInputType.emailAddress,
-                enabled: !_isLoading,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: _passwordController,
-                decoration: const InputDecoration(
-                  labelText: 'Password',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.lock),
-                ),
-                obscureText: true,
-                enabled: !_isLoading,
-              ),
-              const SizedBox(height: 16),
-              if (_errorMessage != null)
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.red.shade200),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.orange.shade700, Colors.black],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 32),
+                TextField(
+                  controller: _emailController,
+                  decoration: const InputDecoration(
+                    labelText: 'Email',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.email),
                   ),
-                  child: Text(
-                    _errorMessage!,
-                    style: TextStyle(color: Colors.red.shade900),
-                    textAlign: TextAlign.center,
+                  keyboardType: TextInputType.emailAddress,
+                  enabled: !_isLoading,
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _passwordController,
+                  decoration: const InputDecoration(
+                    labelText: 'Password',
+                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.lock),
                   ),
+                  obscureText: true,
+                  enabled: !_isLoading,
                 ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: _isLoading ? null : _signIn,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                const SizedBox(height: 16),
+                if (_errorMessage != null)
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.redAccent.withOpacity(0.7)),
+                    ),
+                    child: Text(
+                      _errorMessage!,
+                      style: TextStyle(color: Colors.redAccent[100]),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: _isLoading ? null : _signIn,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(_isRegistering ? 'Register' : 'Sign In'),
                 ),
-                child: _isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Text(_isRegistering ? 'Register' : 'Sign In'),
-              ),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: _isLoading
-                    ? null
-                    : () {
-                        setState(() {
-                          _isRegistering = !_isRegistering;
-                          _errorMessage = null;
-                        });
-                      },
-                child: Text(_isRegistering
-                    ? 'Already have an account? Sign In'
-                    : 'Don\'t have an account? Register'),
-              ),
-              const SizedBox(height: 16),
-              const Divider(),
-              const SizedBox(height: 16),
-              OutlinedButton(
-                onPressed: _isLoading ? null : _signInAnonymously,
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: _isLoading
+                      ? null
+                      : () {
+                          setState(() {
+                            _isRegistering = !_isRegistering;
+                            _errorMessage = null;
+                          });
+                        },
+                  child: Text(_isRegistering
+                      ? 'Already have an account? Sign In'
+                      : 'Don\'t have an account? Register'),
                 ),
-                child: const Text('Continue as Guest'),
-              ),
-            ],
+                const SizedBox(height: 16),
+                const Divider(),
+                const SizedBox(height: 16),
+                OutlinedButton(
+                  onPressed: _isLoading ? null : _signInAnonymously,
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  child: const Text('Continue as Guest'),
+                ),
+              ],
+            ),
           ),
         ),
       ),
