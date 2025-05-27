@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:rxdart/rxdart.dart';
 import 'models/tribe_model.dart';
 import 'playlist_creation.dart';
 import 'TribeChat.dart';
@@ -97,10 +99,36 @@ class TribePage extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             if (tribe.members != null && tribe.members!.isNotEmpty)
-              ...tribe.members!.map((member) => ListTile(
-                    leading: CircleAvatar(child: Text(member[0].toUpperCase())),
-                    title: Text(member),
-                  )),
+              FutureBuilder<List<DocumentSnapshot<Map<String, dynamic>>>>(
+                future: Future.wait(
+                  tribe.members!.map((memberId) => 
+                    FirebaseFirestore.instance.collection('users').doc(memberId).get()
+                  )
+                ),
+                builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return Text('Error loading members: ${snapshot.error}');
+                  }
+
+                  if (!snapshot.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  final memberDocs = snapshot.data!;
+                  return Column(
+                    children: memberDocs.map((doc) {
+                      final data = doc.data();
+                      final username = data?['username'] ?? 'Unknown User';
+                      return ListTile(
+                        leading: CircleAvatar(
+                          child: Text(username[0].toUpperCase()),
+                        ),
+                        title: Text(username),
+                      );
+                    }).toList(),
+                  );
+                },
+              ),
             if (tribe.members == null || tribe.members!.isEmpty)
               const Text('No members yet.'),
             const SizedBox(height: 24),
