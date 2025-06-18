@@ -86,10 +86,10 @@ class _SearchMusicTribePageState extends State<SearchMusicTribePage> {
                     : null,
               ),
               onChanged: (value) {
-                setState(() {
+                    setState(() {
                   _searchQuery = value;
-                });
-              },
+                    });
+                  },
             ),
           ),
           Expanded(
@@ -149,7 +149,7 @@ class _SearchMusicTribePageState extends State<SearchMusicTribePage> {
                             tribe.members ?? [],
                           ),
                           child: const Text('Join'),
-                        ),
+                            ),
                       ),
                     );
                   },

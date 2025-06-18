@@ -82,11 +82,11 @@ class AuthService {
     String? photoURL,
   }) async {
     try {
-      final userDoc = _firestore.collection('users').doc(uid);
-      final doc = await userDoc.get();
-      
-      if (!doc.exists) {
-        await userDoc.set({
+    final userDoc = _firestore.collection('users').doc(uid);
+    final doc = await userDoc.get();
+    
+    if (!doc.exists) {
+      await userDoc.set({
           'created_at': FieldValue.serverTimestamp(),
           'email': email,
           'username': displayName,

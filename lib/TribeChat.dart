@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'models/message.dart';
 import 'services/chat_service.dart';
 import 'services/auth_service.dart';
 import 'models/tribe_model.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class TribeChat extends StatefulWidget {
   final Tribe tribe;
@@ -25,6 +27,7 @@ class _TribeChatState extends State<TribeChat> {
   Channel? _selectedChannel;
   final TextEditingController _newChannelNameController = TextEditingController();
   final TextEditingController _newChannelDescriptionController = TextEditingController();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   @override
   void initState() {
@@ -108,36 +111,75 @@ class _TribeChatState extends State<TribeChat> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Create New Channel'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
+        title: Row(
           children: [
-            TextField(
-              controller: _newChannelNameController,
-              decoration: const InputDecoration(
-                labelText: 'Channel Name',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _newChannelDescriptionController,
-              decoration: const InputDecoration(
-                labelText: 'Description (Optional)',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 2,
-            ),
+            const Icon(Icons.add_circle_outline),
+            const SizedBox(width: 8),
+            const Text('Create New Channel'),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+        content: Form(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: _newChannelNameController,
+                decoration: const InputDecoration(
+                  labelText: 'Channel Name',
+                  hintText: 'e.g., general, announcements, music',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.tag),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter a channel name';
+                  }
+                  if (value.trim().length < 3) {
+                    return 'Channel name must be at least 3 characters';
+                  }
+                  if (value.trim().length > 30) {
+                    return 'Channel name must be less than 30 characters';
+                  }
+                  return null;
+                },
+                autofocus: true,
+                textCapitalization: TextCapitalization.sentences,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _newChannelDescriptionController,
+                decoration: const InputDecoration(
+                  labelText: 'Description (Optional)',
+                  hintText: 'What is this channel for?',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.description),
+                ),
+                maxLines: 2,
+                textCapitalization: TextCapitalization.sentences,
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: _createNewChannel,
-            child: const Text('Create'),
+        ),
+        actions: [
+          TextButton.icon(
+            onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.close),
+            label: const Text('Cancel'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              if (_newChannelNameController.text.trim().isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please enter a channel name'),
+                  ),
+                );
+                return;
+              }
+              _createNewChannel();
+            },
+            icon: const Icon(Icons.add),
+            label: const Text('Create Channel'),
           ),
         ],
       ),
@@ -270,48 +312,146 @@ class _TribeChatState extends State<TribeChat> {
                 ),
               ),
             ),
-            child: StreamBuilder<List<Channel>>(
-              stream: _chatService.getTribeChannels(widget.tribe.id),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
-                }
+            child: Column(
+              children: [
+                // Channel list header
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(
+                        color: Theme.of(context).dividerColor,
+                      ),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Text(
+                        'Channels',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        icon: const Icon(Icons.add),
+                        onPressed: _showCreateChannelDialog,
+                        tooltip: 'Create Channel',
+                        iconSize: 20,
+                      ),
+                    ],
+                  ),
+                ),
+                // Channel list
+                Expanded(
+                  child: StreamBuilder<List<Channel>>(
+                    stream: _chatService.getTribeChannels(widget.tribe.id),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasError) {
+                        return Center(child: Text('Error: ${snapshot.error}'));
+                      }
 
-                if (!snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+                      if (!snapshot.hasData) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
 
-                final channels = snapshot.data!;
+                      final channels = snapshot.data!;
 
-                if (channels.isEmpty) {
-                  return const Center(
-                    child: Text('No channels yet. Create one!'),
-                  );
-                }
+                      if (channels.isEmpty) {
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.chat_bubble_outline,
+                                size: 48,
+                                color: Colors.grey,
+                              ),
+                              const SizedBox(height: 16),
+                              const Text(
+                                'No channels yet',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              TextButton.icon(
+                                onPressed: _showCreateChannelDialog,
+                                icon: const Icon(Icons.add),
+                                label: const Text('Create Channel'),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
 
-                return ListView.builder(
-                  itemCount: channels.length,
-                  itemBuilder: (context, index) {
-                    final channel = channels[index];
-                    return ListTile(
-                      selected: _selectedChannel?.id == channel.id,
-                      title: Text(channel.name),
-                      subtitle: channel.description != null
-                          ? Text(
-                              channel.description!,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            )
-                          : null,
-                      onTap: () {
-                        setState(() {
-                          _selectedChannel = channel;
-                        });
-                      },
-                    );
-                  },
-                );
-              },
+                      return ListView.builder(
+                        itemCount: channels.length,
+                        itemBuilder: (context, index) {
+                          final channel = channels[index];
+                          final isSelected = _selectedChannel?.id == channel.id;
+                          
+                          return ListTile(
+                            selected: isSelected,
+                            selectedTileColor: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                            leading: Icon(
+                              Icons.tag,
+                              color: isSelected
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Colors.grey,
+                            ),
+                            title: Text(
+                              channel.name,
+                              style: TextStyle(
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              ),
+                            ),
+                            subtitle: channel.description != null
+                                ? Text(
+                                    channel.description!,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: isSelected
+                                          ? Theme.of(context).colorScheme.primary
+                                          : Colors.grey,
+                                    ),
+                                  )
+                                : null,
+                            trailing: StreamBuilder<QuerySnapshot>(
+                              stream: _firestore
+                                  .collection('tribes')
+                                  .doc(widget.tribe.id)
+                                  .collection('channels')
+                                  .doc(channel.id)
+                                  .collection('members')
+                                  .snapshots(),
+                              builder: (context, snapshot) {
+                                final memberCount = snapshot.hasData ? snapshot.data!.size : 0;
+                                return Text(
+                                  '$memberCount',
+                                  style: TextStyle(
+                                    color: isSelected
+                                        ? Theme.of(context).colorScheme.primary
+                                        : Colors.grey,
+                                  ),
+                                );
+                              },
+                            ),
+                            onTap: () {
+                              setState(() {
+                                _selectedChannel = channel;
+                              });
+                            },
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
           // Chat area
@@ -502,14 +642,51 @@ class _TribeChatState extends State<TribeChat> {
                         child: Row(
                           children: [
                             Expanded(
-                              child: TextField(
-                                controller: _messageController,
-                                decoration: const InputDecoration(
-                                  hintText: 'Type a message...',
-                                  border: OutlineInputBorder(),
+                              child: RawKeyboardListener(
+                                focusNode: FocusNode(),
+                                onKey: (RawKeyEvent event) {
+                                  if (event is RawKeyDownEvent) {
+                                    if (event.logicalKey == LogicalKeyboardKey.enter) {
+                                      if (event.isShiftPressed) {
+                                        // Insert new line
+                                        final text = _messageController.text;
+                                        final selection = _messageController.selection;
+                                        final newText = text.replaceRange(
+                                          selection.start,
+                                          selection.end,
+                                          '\n',
+                                        );
+                                        _messageController.value = TextEditingValue(
+                                          text: newText,
+                                          selection: TextSelection.collapsed(
+                                            offset: selection.start + 1,
+                                          ),
+                                        );
+                                      } else {
+                                        // Send message
+                                        if (_messageController.text.trim().isNotEmpty) {
+                                          _sendMessage();
+                                        }
+                                      }
+                                    }
+                                  }
+                                },
+                                child: TextField(
+                                  controller: _messageController,
+                                  decoration: const InputDecoration(
+                                    hintText: 'Type a message... (Enter to send, Shift+Enter for new line)',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  maxLines: null,
+                                  textInputAction: TextInputAction.send,
+                                  keyboardType: TextInputType.multiline,
+                                  textCapitalization: TextCapitalization.sentences,
+                                  onEditingComplete: () {
+                                    if (_messageController.text.trim().isNotEmpty) {
+                                      _sendMessage();
+                                    }
+                                  },
                                 ),
-                                maxLines: null,
-                                textInputAction: TextInputAction.newline,
                               ),
                             ),
                             const SizedBox(width: 8),
