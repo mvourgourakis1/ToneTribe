@@ -1,159 +1,95 @@
-import 'package:flutter/material.dart';
-import 'package:spotify_sdk/spotify_sdk.dart';
-import 'dart:async';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+// This file will be rewritten to implement playlist creation using the Spotify API only.
 
-// Song model
-class Song {
+import 'package:flutter/material.dart';
+import 'package:spotify/spotify.dart' as spot;
+import 'package:url_launcher/url_launcher.dart';
+import 'dart:async';
+import 'package:oauth2_client/oauth2_client.dart';
+import 'package:oauth2_client/oauth2_helper.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+class SpotifySong {
+  final String id;
   final String title;
   final String artist;
-  final String spotifyId;
-  final String thumbnailUrl;
-  final List<String> genres;
+  final String imageUrl;
 
-  Song({
-    required this.title,
-    required this.artist,
-    required this.spotifyId,
-    required this.thumbnailUrl,
-    required this.genres,
-  });
+  SpotifySong({required this.id, required this.title, required this.artist, required this.imageUrl});
 }
 
 class PlaylistCreation extends StatefulWidget {
-  const PlaylistCreation({Key? key}) : super(key: key);
+  final String tribeId;
+  const PlaylistCreation({Key? key, required this.tribeId}) : super(key: key);
 
   @override
-  _PlaylistCreationState createState() => _PlaylistCreationState();
+  State<PlaylistCreation> createState() => _PlaylistCreationState();
 }
 
 class _PlaylistCreationState extends State<PlaylistCreation> {
   final TextEditingController _searchController = TextEditingController();
-  final List<Song> _searchResults = [];
-  final List<Song> _playlist = [];
-  Timer? _debounce;
-  bool _isLoading = false;
+  final List<SpotifySong> _searchResults = [];
+  final List<SpotifySong> _playlist = [];
+  String? _accessToken;
+  String? _playlistName;
+  String? _createdPlaylistId;
   String? _error;
-  bool _isConnected = false;
-
-  // Common music genres for suggestions
-  final List<String> _suggestedGenres = [
-    'Rock', 'Pop', 'Hip Hop', 'Jazz', 'Classical', 'Electronic',
-    'R&B', 'Country', 'Blues', 'Metal', 'Folk', 'Indie',
-    'Alternative', 'Punk', 'Reggae', 'Soul', 'Funk', 'Gospel'
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _connectToSpotify();
-  }
+  bool _isLoading = false;
+  Timer? _debounce;
+  spot.SpotifyApi? _spotify;
+  String? _userId;
 
   @override
   void dispose() {
     _searchController.dispose();
     _debounce?.cancel();
-    SpotifySdk.disconnect();
     super.dispose();
   }
 
-  Future<void> _connectToSpotify() async {
-    try {
-      setState(() {
-        _isLoading = true;
-        _error = null;
-      });
-
-      // TODO: Replace with your Spotify client ID and redirect URL
-      await SpotifySdk.connectToSpotifyRemote(
-        clientId: "YOUR_CLIENT_ID",
-        redirectUrl: "YOUR_REDIRECT_URL",
-      );
-
-      // Get access token for API calls
-      final accessToken = await SpotifySdk.getAccessToken(
-        clientId: "YOUR_CLIENT_ID",
-        redirectUrl: "YOUR_REDIRECT_URL",
-        scope: "app-remote-control,user-modify-playback-state,playlist-read-private",
-      );
-
-      setState(() {
-        _isConnected = true;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _error = 'Failed to connect to Spotify: ${e.toString()}';
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _searchSpotify(String query) async {
-    if (query.isEmpty) {
-      setState(() {
-        _searchResults.clear();
-        _error = null;
-      });
-      return;
-    }
-
-    if (!_isConnected) {
-      setState(() {
-        _error = 'Please connect to Spotify first';
-      });
-      return;
-    }
-
+  Future<void> _authenticate() async {
     setState(() {
-      _isLoading = true;
       _error = null;
+      _isLoading = true;
     });
 
+    final client = OAuth2Client(
+      authorizeUrl: 'https://accounts.spotify.com/authorize',
+      tokenUrl: 'https://accounts.spotify.com/api/token',
+      redirectUri: 'tonetribe://callback', // must match your Spotify app settings
+      customUriScheme: 'tonetribe', // must match your app's scheme
+    );
+
+    final helper = OAuth2Helper(
+      client,
+      clientId: 'd4bd2825b4584320b0d3f23aa02bcfdd',
+      clientSecret: '95f0b318abd940228ad9cdcd5fc90411',
+      scopes: [
+        'playlist-modify-public',
+        'playlist-modify-private',
+        'user-read-private',
+        'user-read-email'
+      ],
+    );
+
     try {
-      // Get access token
-      final accessToken = await SpotifySdk.getAccessToken(
-        clientId: "YOUR_CLIENT_ID",
-        redirectUrl: "YOUR_REDIRECT_URL",
-        scope: "user-read-private,playlist-read-private",
-      );
-
-      // Search tracks using Spotify Web API
-      final response = await http.get(
-        Uri.parse('https://api.spotify.com/v1/search?q=${Uri.encodeComponent(query)}&type=track&limit=10'),
-        headers: {
-          'Authorization': 'Bearer $accessToken',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final searchResults = json.decode(response.body);
+      final token = await helper.getToken();
+      if (token != null && token.accessToken != null) {
+        _accessToken = token.accessToken;
+        _spotify = spot.SpotifyApi.withAccessToken(_accessToken!);
+        final me = await _spotify!.me.get();
+        _userId = me.id;
         setState(() {
-          _searchResults.clear();
-          for (var track in searchResults['tracks']['items']) {
-            _searchResults.add(Song(
-              title: track['name'],
-              artist: track['artists'][0]['name'],
-              spotifyId: track['id'],
-              thumbnailUrl: track['album']['images'].isNotEmpty
-                  ? track['album']['images'][0]['url']
-                  : '',
-              genres: [], // Will be populated when added to playlist
-            ));
-          }
+          _isLoading = false;
         });
       } else {
         setState(() {
-          _error = 'Failed to search Spotify: ${response.reasonPhrase}';
+          _error = 'Failed to get Spotify access token.';
+          _isLoading = false;
         });
       }
     } catch (e) {
       setState(() {
-        _error = 'Failed to search Spotify: ${e.toString()}';
-      });
-    } finally {
-      setState(() {
+        _error = 'Spotify authentication error: $e';
         _isLoading = false;
       });
     }
@@ -161,286 +97,217 @@ class _PlaylistCreationState extends State<PlaylistCreation> {
 
   void _onSearchChanged(String query) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
-    _debounce = Timer(const Duration(milliseconds: 300), () {
-      _searchSpotify(query);
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      if (query.isNotEmpty) _searchSpotify(query);
     });
   }
 
-  void _showGenreDialog(Song song) {
-    final TextEditingController genreController = TextEditingController();
-    List<String> selectedGenres = [];
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setModalState) {
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom,
-                left: 16,
-                right: 16,
-                top: 16,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    'Add Genres for ${song.title}',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: genreController,
-                    decoration: InputDecoration(
-                      hintText: 'Enter a genre',
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.add),
-                        onPressed: () {
-                          if (genreController.text.isNotEmpty) {
-                            setModalState(() {
-                              selectedGenres.add(genreController.text);
-                              genreController.clear();
-                            });
-                          }
-                        },
-                      ),
-                    ),
-                    onSubmitted: (value) {
-                      if (value.isNotEmpty) {
-                        setModalState(() {
-                          selectedGenres.add(value);
-                          genreController.clear();
-                        });
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    children: _suggestedGenres.map((genre) {
-                      return FilterChip(
-                        label: Text(genre),
-                        selected: selectedGenres.contains(genre),
-                        onSelected: (bool selected) {
-                          setModalState(() {
-                            if (selected) {
-                              selectedGenres.add(genre);
-                            } else {
-                              selectedGenres.remove(genre);
-                            }
-                          });
-                        },
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 16),
-                  Wrap(
-                    spacing: 8,
-                    children: selectedGenres.map((genre) {
-                      return Chip(
-                        label: Text(genre),
-                        onDeleted: () {
-                          setModalState(() {
-                            selectedGenres.remove(genre);
-                          });
-                        },
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      if (selectedGenres.isNotEmpty) {
-                        setState(() {
-                          _playlist.add(Song(
-                            title: song.title,
-                            artist: song.artist,
-                            spotifyId: song.spotifyId,
-                            thumbnailUrl: song.thumbnailUrl,
-                            genres: selectedGenres,
-                          ));
-                        });
-                        Navigator.pop(context);
-                      }
-                    },
-                    child: const Text('Add to Playlist'),
-                  ),
-                  const SizedBox(height: 16),
-                ],
+  Future<void> _searchSpotify(String query) async {
+    if (_spotify == null) return;
+    setState(() {
+      _isLoading = true;
+      _error = null;
+      _searchResults.clear();
+    });
+    try {
+      final pages = await _spotify!.search.get(query).first();
+      _searchResults.clear();
+      for (var page in pages) {
+        if (page.items == null) continue;
+        for (var item in page.items!) {
+          if (item is spot.Track) {
+            _searchResults.add(
+              SpotifySong(
+                id: item.id ?? '',
+                title: item.name ?? '',
+                artist: item.artists?.isNotEmpty == true ? item.artists!.first.name ?? '' : '',
+                imageUrl: item.album?.images?.isNotEmpty == true ? item.album!.images!.first.url ?? '' : '',
               ),
             );
-          },
-        );
-      },
-    );
+          }
+        }
+      }
+      setState(() {
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = 'Spotify search error: $e';
+        _isLoading = false;
+      });
+    }
   }
 
-  Widget _buildConnectionStatus() {
-    if (_isLoading) {
-      return const Padding(
-        padding: EdgeInsets.all(8.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-            SizedBox(width: 8),
-            Text('Connecting to Spotify...'),
-          ],
-        ),
-      );
+  Future<void> _createSpotifyPlaylist() async {
+    if (_playlistName == null || _playlistName!.isEmpty || _playlist.isEmpty || _spotify == null || _userId == null) {
+      setState(() {
+        _error = 'Missing playlist name, songs, or authentication.';
+      });
+      return;
     }
-
-    if (!_isConnected) {
-      return Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, color: Colors.red),
-            const SizedBox(width: 8),
-            const Text('Not connected to Spotify'),
-            const SizedBox(width: 16),
-            ElevatedButton.icon(
-              onPressed: _connectToSpotify,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
-            ),
-          ],
-        ),
-      );
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final playlist = await _spotify!.playlists.createPlaylist(_userId!, _playlistName!, public: true, description: 'Created with ToneTribe');
+      final uris = _playlist.map((s) => 'spotify:track:${s.id}').toList();
+      await _spotify!.playlists.addTracks(uris, playlist.id!);
+      // Save playlist to Firestore
+      final user = FirebaseAuth.instance.currentUser;
+      await FirebaseFirestore.instance
+        .collection('tribes')
+        .doc(widget.tribeId)
+        .collection('playlists')
+        .add({
+          'name': _playlistName,
+          'createdBy': user?.uid,
+          'createdAt': FieldValue.serverTimestamp(),
+          'spotifyId': playlist.id,
+          'spotifyUrl': 'https://open.spotify.com/playlist/${playlist.id}',
+          'tracks': _playlist.map((s) => {
+            'id': s.id,
+            'title': s.title,
+            'artist': s.artist,
+            'imageUrl': s.imageUrl,
+          }).toList(),
+        });
+      setState(() {
+        _createdPlaylistId = playlist.id;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = 'Error creating playlist: $e';
+        _isLoading = false;
+      });
     }
+  }
 
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.check_circle, color: Colors.green[700]),
-          const SizedBox(width: 8),
-          const Text('Connected to Spotify'),
-        ],
-      ),
-    );
+  Future<void> _playSong(SpotifySong song) async {
+    final uri = Uri.parse('https://open.spotify.com/track/${song.id}');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      setState(() {
+        _error = 'Could not launch Spotify app.';
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Create Playlist'),
-      ),
-      body: Column(
-        children: [
-          _buildConnectionStatus(),
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search for a song...',
-                prefixIcon: const Icon(Icons.search),
-                border: const OutlineInputBorder(),
-                enabled: _isConnected, // Disable search if not connected
-              ),
-              onChanged: _onSearchChanged,
-            ),
-          ),
-          if (_isLoading)
-            const Center(child: CircularProgressIndicator())
-          else if (_error != null)
-            Padding(
+      appBar: AppBar(title: const Text('Create Spotify Playlist')),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Padding(
               padding: const EdgeInsets.all(16.0),
-              child: Text(
-                _error!,
-                style: const TextStyle(color: Colors.red),
-              ),
-            )
-          else
-            Expanded(
-              child: ListView.builder(
-                itemCount: _searchResults.length,
-                itemBuilder: (context, index) {
-                  final song = _searchResults[index];
-                  return ListTile(
-                    leading: Image.network(
-                      song.thumbnailUrl,
-                      width: 56,
-                      height: 56,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Icon(Icons.music_note);
-                      },
-                    ),
-                    title: Text(song.title),
-                    subtitle: Text(song.artist),
-                    onTap: () => _showGenreDialog(song),
-                  );
-                },
-              ),
-            ),
-          if (_playlist.isNotEmpty)
-            Container(
-              padding: const EdgeInsets.all(16.0),
-              decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 4,
-                    offset: const Offset(0, -2),
-                  ),
-                ],
-              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    'Current Playlist (${_playlist.length} songs)',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    height: 100,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _playlist.length,
-                      itemBuilder: (context, index) {
-                        final song = _playlist[index];
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 8.0),
-                          child: Column(
-                            children: [
-                              Image.network(
-                                song.thumbnailUrl,
-                                width: 60,
-                                height: 60,
-                                fit: BoxFit.cover,
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                song.title,
-                                style: const TextStyle(fontSize: 12),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        );
-                      },
+                  if (_spotify == null)
+                    ElevatedButton.icon(
+                      onPressed: _authenticate,
+                      icon: const Icon(Icons.link),
+                      label: const Text('Connect to Spotify'),
                     ),
-                  ),
+                  if (_spotify != null) ...[
+                    TextField(
+                      controller: _searchController,
+                      decoration: const InputDecoration(
+                        labelText: 'Search for songs',
+                        prefixIcon: Icon(Icons.search),
+                      ),
+                      onChanged: _onSearchChanged,
+                    ),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: _searchResults.length,
+                        itemBuilder: (context, idx) {
+                          final song = _searchResults[idx];
+                          return ListTile(
+                            leading: song.imageUrl.isNotEmpty
+                                ? Image.network(song.imageUrl, width: 48, height: 48, fit: BoxFit.cover)
+                                : const Icon(Icons.music_note),
+                            title: Text(song.title),
+                            subtitle: Text(song.artist),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.add),
+                              onPressed: () {
+                                setState(() {
+                                  if (!_playlist.any((s) => s.id == song.id)) {
+                                    _playlist.add(song);
+                                  }
+                                });
+                              },
+                            ),
+                            onTap: () => _playSong(song),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text('Playlist:', style: Theme.of(context).textTheme.titleMedium),
+                    SizedBox(
+                      height: 80,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _playlist.length,
+                        itemBuilder: (context, idx) {
+                          final song = _playlist[idx];
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8.0),
+                            child: Column(
+                              children: [
+                                song.imageUrl.isNotEmpty
+                                    ? Image.network(song.imageUrl, width: 48, height: 48, fit: BoxFit.cover)
+                                    : const Icon(Icons.music_note),
+                                Text(song.title, style: const TextStyle(fontSize: 10), overflow: TextOverflow.ellipsis),
+                                IconButton(
+                                  icon: const Icon(Icons.delete, size: 16),
+                                  onPressed: () {
+                                    setState(() {
+                                      _playlist.removeAt(idx);
+                                    });
+                                  },
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      decoration: const InputDecoration(
+                        labelText: 'Playlist Name',
+                        prefixIcon: Icon(Icons.playlist_add),
+                      ),
+                      onChanged: (v) => _playlistName = v,
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: _playlist.isNotEmpty && _playlistName != null
+                          ? _createSpotifyPlaylist
+                          : null,
+                      icon: const Icon(Icons.cloud_upload),
+                      label: const Text('Create Spotify Playlist'),
+                    ),
+                    if (_createdPlaylistId != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: Text('Playlist created! Open in Spotify.', style: TextStyle(color: Colors.green[700])),
+                      ),
+                  ],
+                  if (_error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: Text(_error!, style: const TextStyle(color: Colors.red)),
+                    ),
                 ],
               ),
             ),
-        ],
-      ),
     );
   }
 }
